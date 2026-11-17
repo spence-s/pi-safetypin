@@ -4,6 +4,7 @@ import {join} from 'node:path';
 import process from 'node:process';
 import {SandboxManager, SandboxRuntimeConfigSchema, type SandboxRuntimeConfig} from '@anthropic-ai/sandbox-runtime';
 import {execa, type Options} from 'execa';
+import {parseConfig, type Config} from './schema.ts';
 
 /**
  * Exposes a subset of execa options
@@ -34,14 +35,14 @@ export class Sandbox {
   private scratchPath: string | undefined;
   private commandCount = 0;
   private readonly cwd: string;
-  private readonly config: SandboxRuntimeConfig;
+  private readonly config: Config;
 
   /**
    * Keeps policy explicit and independent of Pi or configuration-file discovery.
    */
-  constructor(cwd: string, config: SandboxRuntimeConfig) {
+  constructor(cwd: string, config: Config) {
     this.cwd = cwd;
-    this.config = SandboxRuntimeConfigSchema.parse(config);
+    this.config = parseConfig(config);
   }
 
   /**
