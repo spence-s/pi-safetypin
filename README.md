@@ -1,4 +1,4 @@
-# <img src="assets/safety-pin.svg" width="28" height="28" align="middle" alt="pi-safetypin logo"> Pi SafetyPin
+# ![](assets/safety-pin.svg) Pi SafetyPin
 
 A [Pi](https://pi.dev) extension that runs shell and filesystem tools inside [Anthropic Sandbox Runtime](https://github.com/anthropics/sandbox-runtime).
 
