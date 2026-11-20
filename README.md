@@ -1,4 +1,4 @@
-# pi-sb
+# <img src="assets/safety-pin.svg" width="28" height="28" align="middle" alt="pi-safetypin logo"> Pi SafetyPin
 
 A [Pi](https://pi.dev) extension that runs shell and filesystem tools inside [Anthropic Sandbox Runtime](https://github.com/anthropics/sandbox-runtime).
 
@@ -11,13 +11,13 @@ Requires Pi and Node.js 24+. On macOS, install `ripgrep`; on Linux, install `bub
 From npm (once published):
 
 ```sh
-pi install npm:pi-sb
+pi install npm:pi-safetypin
 ```
 
 Or from Git:
 
 ```sh
-pi install git:github.com/spence-s/pi-sb
+pi install git:github.com/spence-s/pi-safetypin
 ```
 
 Choose one. Add `--local` to install for the current project only, then restart Pi or run `/reload`.

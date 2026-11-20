@@ -1,7 +1,7 @@
 {
-  "name": "pi-sb",
-  "version": "0.0.2",
-  "description": "A Pi extension that sandboxes shell and filesystem tools with configurable access.",
+  "name": "pi-safetypin",
+  "version": "0.0.0",
+  "description": "A full featured, highly configurable, intuitive security extension for pi coding agent",
   "license": "MIT",
   "repository": "github:spence-s/pi-sb",
   "homepage": "https://github.com/spence-s/pi-sb",
