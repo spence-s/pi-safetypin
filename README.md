@@ -1,8 +1,6 @@
 <p align="center">
-  <img src="assets/safety-pin.svg" width="160" height="160" alt="">
+  <img src="assets/safety-pin.svg" width="250" height="250" alt="">
 </p>
-
-# pi-safetypin
 
 A [Pi](https://pi.dev) extension that runs shell and filesystem tools inside [Anthropic Sandbox Runtime](https://github.com/anthropics/sandbox-runtime).
 
