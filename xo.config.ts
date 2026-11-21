@@ -43,6 +43,8 @@ const xoConfig: XoConfigItem[] = [
     rules: {
       // Each interaction must finish before the screen is shown again.
       'no-await-in-loop': 'off',
+      // deep nesting is part of the design here
+      'max-depth': 'off',
     },
   },
   {
