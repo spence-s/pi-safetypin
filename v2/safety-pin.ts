@@ -52,19 +52,35 @@ export class SafetyPin {
   }
 
   /**
-   * Reserves SRT's shared runtime and keeps its sockets in private writable storage.
+   * Reserves SRT's shared runtime and verifies that it actually installed our policy.
    */
   async start(): Promise<void> {
-    if (SafetyPin.activeInstance !== undefined || SandboxManager.getConfig() !== undefined) {
+    if (SafetyPin.activeInstance !== undefined) {
       throw new Error('A sandbox is already active.');
     }
 
     SafetyPin.activeInstance = this;
     let scratchPath: string | undefined;
+    let config: SandboxRuntimeConfig | undefined;
     try {
       scratchPath = await mkdtemp(join(tmpdir(), 'sloppi-v2-'));
       scratchPath = await realpath(scratchPath);
-      const config = SandboxRuntimeConfigSchema.parse(this.config);
+      const {network, filesystem} = this.config;
+      // Fill in required runtime lists only after user overrides have been merged.
+      config = SandboxRuntimeConfigSchema.parse({
+        ...this.config,
+        network: {
+          ...network,
+          allowedDomains: network?.allowedDomains ?? [],
+          deniedDomains: network?.deniedDomains ?? [],
+        },
+        filesystem: {
+          ...filesystem,
+          denyRead: filesystem?.denyRead ?? [],
+          allowWrite: filesystem?.allowWrite ?? [],
+          denyWrite: filesystem?.denyWrite ?? [],
+        },
+      });
       config.filesystem.allowWrite.push(scratchPath);
       config.network.allowUnixSockets = [...(config.network.allowUnixSockets ?? []), scratchPath];
 
@@ -81,10 +97,17 @@ export class SafetyPin {
         }
       }
 
+      // SRT can return without applying our config if another owner initialized it.
+      if (SandboxManager.getConfig() !== config) {
+        throw new Error('A sandbox is already active.');
+      }
+
       this.scratchPath = scratchPath;
     } catch (error) {
       try {
-        await SandboxManager.reset();
+        if (config !== undefined && SandboxManager.getConfig() === config) {
+          await SandboxManager.reset();
+        }
       } finally {
         SafetyPin.activeInstance = undefined;
         if (scratchPath !== undefined) {

@@ -26,7 +26,11 @@ Choose one. Add `--local` to install for the current project only, then restart 
 
 ## Use
 
-Sandbox protection starts automatically. Run `/sandbox` to manage filesystem access, allowed network destinations, and advanced settings for the current project or globally. Blocked network requests can prompt you to approve access.
+The package loads the V2 proof of concept. Run `/safetypin` to manage filesystem and network access.
+
+### V1
+
+To use the legacy sandbox, load `./src/index.ts` directly instead of the package. Run `/sandbox` to manage filesystem access, allowed network destinations, and advanced settings for the current project or globally. Blocked network requests can prompt you to approve access.
 
 - `/sandbox status` — check protection.
 - `/sandbox off` or `/sandbox on` — disable or enable it for this session. **When off, managed tools run directly on the host.**
@@ -40,8 +44,10 @@ Sandbox protection starts automatically. Run `/sandbox` to manage filesystem acc
 ```sh
 npm install
 npm run check && npm run lint && npm test
-pi -e ./src/index.ts
+pi -e .
 ```
+
+If Sloppi's sandbox is already installed, run `pi config --local` from this checkout and disable only its sandbox extension before launching V2. Both extensions replace the same tools. Keep the override local so other projects stay protected.
 
 ## License
 
