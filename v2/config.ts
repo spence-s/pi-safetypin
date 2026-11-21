@@ -3,6 +3,7 @@ import {homedir} from 'node:os';
 import {dirname, join} from 'node:path';
 import process from 'node:process';
 import {merge} from 'object-deep-merge';
+import {getDefaultConfig} from './defaults.ts';
 import {parseConfig, type Config} from './schema.ts';
 
 export type {Config} from './schema.ts';
@@ -58,10 +59,14 @@ export function getConfigStores(cwd: string) {
 }
 
 /**
- * Keeps each scope independent on disk while deriving project overrides at load time.
+ * Applies defaults at load time so settings files only contain user-supplied rules.
  */
 export async function loadConfig(cwd: string): Promise<Config> {
   const {globalStore, projectStore} = getConfigStores(cwd);
-  const [global, project] = await Promise.all([globalStore.load(), projectStore.load()]);
-  return merge(global, project);
+  const [defaults, global, project] = await Promise.all([
+    getDefaultConfig(cwd),
+    globalStore.load(),
+    projectStore.load(),
+  ]);
+  return merge(defaults, global, project);
 }
