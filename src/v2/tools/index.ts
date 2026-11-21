@@ -120,6 +120,34 @@ export class SandboxTools {
     return createSandboxGrepTool(this.cwd, this.sandbox);
   }
 
+  registerRead() {
+    this.pi.registerTool({...this.read, defaultActive: false});
+  }
+
+  registerWrite() {
+    this.pi.registerTool({...this.write, defaultActive: false});
+  }
+
+  registerEdit() {
+    this.pi.registerTool({...this.edit, defaultActive: false});
+  }
+
+  registerBash() {
+    this.pi.registerTool({...this.bash, defaultActive: false});
+  }
+
+  registerFind() {
+    this.pi.registerTool({...this.find, defaultActive: false});
+  }
+
+  registerLs() {
+    this.pi.registerTool({...this.ls, defaultActive: false});
+  }
+
+  registerGrep() {
+    this.pi.registerTool({...this.grep, defaultActive: false});
+  }
+
   /**
    * Registers sandboxed replacements without changing Pi's default tool selection.
    *
@@ -128,13 +156,12 @@ export class SandboxTools {
    * built-ins while keeping the sandboxed definition available when Pi activates one.
    */
   register(): void {
-    this.pi.registerTool({...this.read, defaultActive: false});
-    this.pi.registerTool({...this.write, defaultActive: false});
-    this.pi.registerTool({...this.edit, defaultActive: false});
-    this.pi.registerTool({...this.bash, defaultActive: false});
-    this.pi.registerTool({...this.find, defaultActive: false});
-    this.pi.registerTool({...this.ls, defaultActive: false});
-    this.pi.registerTool({...this.grep, defaultActive: false});
+    this.registerRead();
+    this.registerWrite();
+    this.registerEdit();
+    this.registerBash();
+    this.registerFind();
+    this.registerLs();
+    this.registerGrep();
   }
 }
-
