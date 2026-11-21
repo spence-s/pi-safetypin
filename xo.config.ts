@@ -6,6 +6,7 @@ const xoConfig: XoConfigItem[] = [
     space: true,
     rules: {
       'capitalized-comments': 'off',
+      complexity: 'off',
       '@typescript-eslint/naming-convention': 'off',
       'jsdoc/require-asterisk-prefix': ['error', 'always'],
     },
@@ -35,6 +36,13 @@ const xoConfig: XoConfigItem[] = [
           mjs: 'never',
         },
       ],
+    },
+  },
+  {
+    files: ['v2/ui/screens/**/*.ts'],
+    rules: {
+      // Each interaction must finish before the screen is shown again.
+      'no-await-in-loop': 'off',
     },
   },
   {

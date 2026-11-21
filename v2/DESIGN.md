@@ -25,3 +25,4 @@ V2 is an incremental improvement over V1. We’re already migrating parts of V1.
 - Use one settings menu, with no Global or Local mode to choose up front.
 - Filesystem Access and Network Access each show global and local rules together and let users edit either scope without leaving the screen.
 - Make the scope explicit for each edit: Global applies to all projects; Local applies to the current project. Leave the layout and interaction details open.
+- As V1 settings screens move to V2, use an explicit loop rather than recursively reopening the screen. Saving or canceling an edit returns to the screen; canceling from the screen exits it.

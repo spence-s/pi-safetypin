@@ -14,7 +14,7 @@ export async function showLandingScreen(ctx: ExtensionCommandContext): Promise<v
   // use a switch case for screen routing
   switch (selection) {
     case 'Filesystem Access': {
-      await showFileSystemAccess();
+      await showFileSystemAccess(ctx);
       break;
     }
 
