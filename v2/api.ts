@@ -4,6 +4,9 @@ import {merge} from 'object-deep-merge';
 import {loadConfig, type Config} from './config.ts';
 import {Sandbox} from './sandbox.ts';
 
+export {loadConfig, type Config} from './config.ts';
+export {parseConfig} from './schema.ts';
+
 /**
  * Shares the configured sandbox without taking ownership of when it runs.
  */

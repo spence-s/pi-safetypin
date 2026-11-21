@@ -13,6 +13,11 @@
       "types": "./dist/src/index.d.ts",
       "import": "./dist/src/index.js",
       "default": "./dist/src/index.js"
+    },
+    "./v2": {
+      "types": "./dist/v2/api.d.ts",
+      "import": "./dist/v2/api.js",
+      "default": "./dist/v2/api.js"
     }
   },
   "sideEffects": false,
@@ -35,7 +40,8 @@
   },
   "files": [
     "dist",
-    "src"
+    "src",
+    "v2"
   ],
   "keywords": [
     "pi-package",
@@ -73,7 +79,8 @@
   },
   "pi": {
     "extensions": [
-      "./src/index.ts"
+      "./src/index.ts",
+      "./v2/extension.ts"
     ]
   }
 }
