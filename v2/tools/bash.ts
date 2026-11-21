@@ -1,11 +1,11 @@
 import {Buffer} from 'node:buffer';
 import {createBashTool, type BashOperations} from '@earendil-works/pi-coding-agent';
-import type {Sandbox} from '../sandbox.ts';
+import type {SafetyPin} from '../safety-pin.ts';
 
 /**
  * Adapts Execa's streams and error states to Pi's bash operation contract.
  */
-export function createBashOperations(sandbox: Sandbox): BashOperations {
+export function createBashOperations(safetyPin: SafetyPin): BashOperations {
   return {
     /**
      * Streams without retaining a second buffered copy of command output.
@@ -13,7 +13,7 @@ export function createBashOperations(sandbox: Sandbox): BashOperations {
     async exec(command, commandCwd, {onData, signal, timeout}) {
       try {
         const quotedCommand = `'${command.replaceAll('\'', '\'"\'"\'')}'`;
-        const {process} = await sandbox.run(`sh -c ${quotedCommand}`, {
+        const {process} = await safetyPin.run(`sh -c ${quotedCommand}`, {
           cwd: commandCwd,
           ...(signal !== undefined && {cancelSignal: signal}),
           ...(timeout !== undefined && {timeout: timeout * 1000}),
@@ -48,6 +48,6 @@ export function createBashOperations(sandbox: Sandbox): BashOperations {
 /**
  * Keeps Pi's bash UI while preventing host session-environment exposure.
  */
-export function createSandboxBashTool(cwd: string, sandbox: Sandbox): ReturnType<typeof createBashTool> {
-  return createBashTool(cwd, {operations: createBashOperations(sandbox), exposeSessionEnvironment: false});
+export function createSandboxBashTool(cwd: string, safetyPin: SafetyPin): ReturnType<typeof createBashTool> {
+  return createBashTool(cwd, {operations: createBashOperations(safetyPin), exposeSessionEnvironment: false});
 }

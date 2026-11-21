@@ -7,7 +7,7 @@ import {
   formatSize,
   type LsToolDetails,
 } from '@earendil-works/pi-coding-agent';
-import type {Sandbox} from '../sandbox.ts';
+import type {SafetyPin} from '../safety-pin.ts';
 
 // Reuse Pi's exact execute signature so this replacement cannot drift from the tool it overrides.
 type LsExecute = ReturnType<typeof createLsTool>['execute'];
@@ -15,7 +15,7 @@ type LsExecute = ReturnType<typeof createLsTool>['execute'];
 /**
  * Lists a directory in one sandbox instead of spawning one sandbox per child stat.
  */
-export function createSandboxLsTool(cwd: string, sandbox: Sandbox): ReturnType<typeof createLsTool> {
+export function createSandboxLsTool(cwd: string, safetyPin: SafetyPin): ReturnType<typeof createLsTool> {
   const execute: LsExecute = async (_toolCallId, {path, limit}, signal) => {
     const requestedPath = (path === undefined || path.length === 0 ? '.' : path)
       .replace(/^@/v, '')
@@ -30,7 +30,7 @@ export function createSandboxLsTool(cwd: string, sandbox: Sandbox): ReturnType<t
     let result;
     try {
       const quotedDirectory = `'${`${directory}/`.replaceAll('\'', '\'"\'"\'')}'`;
-      const {process} = await sandbox.run(`ls -1Ap -- ${quotedDirectory}`, {
+      const {process} = await safetyPin.run(`ls -1Ap -- ${quotedDirectory}`, {
         cwd,
         ...(signal !== undefined && {cancelSignal: signal}),
         reject: false,

@@ -1,5 +1,5 @@
 import type {ExtensionAPI} from '@earendil-works/pi-coding-agent';
-import type {Sandbox} from '../sandbox.ts';
+import type {SafetyPin} from '../safety-pin.ts';
 import {createReadOperations, createSandboxReadTool} from './read.ts';
 import {createWriteOperations, createSandboxWriteTool} from './write.ts';
 import {createEditOperations, createSandboxEditTool} from './edit.ts';
@@ -8,53 +8,53 @@ import {createFindOperations, createSandboxFindTool} from './find.ts';
 import {createSandboxLsTool} from './ls.ts';
 import {createSandboxGrepTool} from './grep.ts';
 
-export class SandboxTools {
+export class SafetyPinTools {
   pi: ExtensionAPI;
   cwd: string;
-  sandbox: Sandbox;
+  safetyPin: SafetyPin;
 
   /**
    * Keeps tool registration separate from sandbox lifecycle ownership.
    */
-  constructor(pi: ExtensionAPI, cwd: string, sandbox: Sandbox) {
+  constructor(pi: ExtensionAPI, cwd: string, safetyPin: SafetyPin) {
     this.pi = pi;
     this.cwd = cwd;
-    this.sandbox = sandbox;
+    this.safetyPin = safetyPin;
   }
 
   /**
    * Exposes the sandboxed operations used by Pi's read tool.
    */
   get readOperations() {
-    return createReadOperations(this.sandbox);
+    return createReadOperations(this.safetyPin);
   }
 
   /**
    * Exposes the sandboxed operations used by Pi's write tool.
    */
   get writeOperations() {
-    return createWriteOperations(this.sandbox);
+    return createWriteOperations(this.safetyPin);
   }
 
   /**
    * Exposes the sandboxed operations used by Pi's edit tool.
    */
   get editOperations() {
-    return createEditOperations(this.sandbox);
+    return createEditOperations(this.safetyPin);
   }
 
   /**
    * Exposes the sandboxed operations used by Pi's bash tool.
    */
   get bashOperations() {
-    return createBashOperations(this.sandbox);
+    return createBashOperations(this.safetyPin);
   }
 
   /**
    * Exposes the sandboxed operations used by Pi's find tool.
    */
   get findOperations() {
-    return createFindOperations(this.sandbox);
+    return createFindOperations(this.safetyPin);
   }
 
   /**
@@ -75,49 +75,49 @@ export class SandboxTools {
    * Retains Pi's tool definition with sandboxed read execution.
    */
   get read(): ReturnType<typeof createSandboxReadTool> {
-    return createSandboxReadTool(this.cwd, this.sandbox);
+    return createSandboxReadTool(this.cwd, this.safetyPin);
   }
 
   /**
    * Retains Pi's tool definition with sandboxed write execution.
    */
   get write(): ReturnType<typeof createSandboxWriteTool> {
-    return createSandboxWriteTool(this.cwd, this.sandbox);
+    return createSandboxWriteTool(this.cwd, this.safetyPin);
   }
 
   /**
    * Retains Pi's tool definition with sandboxed edit execution.
    */
   get edit(): ReturnType<typeof createSandboxEditTool> {
-    return createSandboxEditTool(this.cwd, this.sandbox);
+    return createSandboxEditTool(this.cwd, this.safetyPin);
   }
 
   /**
    * Retains Pi's tool definition with sandboxed bash execution.
    */
   get bash(): ReturnType<typeof createSandboxBashTool> {
-    return createSandboxBashTool(this.cwd, this.sandbox);
+    return createSandboxBashTool(this.cwd, this.safetyPin);
   }
 
   /**
    * Retains Pi's tool definition with sandboxed find execution.
    */
   get find(): ReturnType<typeof createSandboxFindTool> {
-    return createSandboxFindTool(this.cwd, this.sandbox);
+    return createSandboxFindTool(this.cwd, this.safetyPin);
   }
 
   /**
    * Retains Pi's tool definition with sandboxed ls execution.
    */
   get ls(): ReturnType<typeof createSandboxLsTool> {
-    return createSandboxLsTool(this.cwd, this.sandbox);
+    return createSandboxLsTool(this.cwd, this.safetyPin);
   }
 
   /**
    * Retains Pi's tool definition with sandboxed grep execution.
    */
   get grep(): ReturnType<typeof createSandboxGrepTool> {
-    return createSandboxGrepTool(this.cwd, this.sandbox);
+    return createSandboxGrepTool(this.cwd, this.safetyPin);
   }
 
   registerRead() {

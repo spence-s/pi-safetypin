@@ -2,32 +2,32 @@ import {resolve} from 'node:path';
 import process from 'node:process';
 import {merge} from 'object-deep-merge';
 import {loadConfig, type Config} from './config.ts';
-import {Sandbox} from './sandbox.ts';
+import {SafetyPin} from './safety-pin.ts';
 
 export {loadConfig, type Config} from './config.ts';
 export {parseConfig} from './schema.ts';
 
 /**
- * Shares the configured sandbox without taking ownership of when it runs.
+ * Shares the configured Safety Pin instance without taking ownership of when it runs.
  */
-export async function getSandbox(options: {cwd?: string} & (
+export async function getSafetyPin(options: {cwd?: string} & (
   | {config: Config; overrides?: never}
   | {config?: never; overrides?: Config}
-) = {}): Promise<Sandbox> {
+) = {}): Promise<SafetyPin> {
   const {config, overrides} = options;
   if ('config' in options && 'overrides' in options) {
     throw new Error('Specify either config or overrides, not both.');
   }
 
-  if (Sandbox.active && ('config' in options || 'overrides' in options)) {
-    throw new Error('There is already an active sandbox and configuration cannot be changed via options, remove both config and overrides options');
+  if (SafetyPin.active && ('config' in options || 'overrides' in options)) {
+    throw new Error('Safety Pin is already active. Omit config and overrides to reuse the active instance.');
   }
 
-  if (Sandbox.active !== undefined) {
-    return Sandbox.active;
+  if (SafetyPin.active !== undefined) {
+    return SafetyPin.active;
   }
 
   const cwd = resolve(options.cwd ?? process.cwd());
 
-  return new Sandbox(cwd, config ?? merge(await loadConfig(cwd), overrides ?? {}));
+  return new SafetyPin(cwd, config ?? merge(await loadConfig(cwd), overrides ?? {}));
 }

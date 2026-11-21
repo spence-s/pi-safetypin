@@ -27,15 +27,15 @@ export type RunOptions<T extends Options = Options> = T extends Options ? Pick<T
   | 'forceKillAfterDelay'
 > : never;
 
-export class Sandbox {
-  private static activeSandbox: Sandbox | undefined;
+export class SafetyPin {
+  private static activeInstance: SafetyPin | undefined;
 
   /**
    * Only exposes the runtime owner once it is ready to run commands.
    */
-  static get active(): Sandbox | undefined {
-    const sandbox = this.activeSandbox;
-    return sandbox?.scratchPath === undefined ? undefined : sandbox;
+  static get active(): SafetyPin | undefined {
+    const instance = this.activeInstance;
+    return instance?.scratchPath === undefined ? undefined : instance;
   }
 
   private scratchPath: string | undefined;
@@ -55,11 +55,11 @@ export class Sandbox {
    * Reserves SRT's shared runtime and keeps its sockets in private writable storage.
    */
   async start(): Promise<void> {
-    if (Sandbox.activeSandbox !== undefined || SandboxManager.getConfig() !== undefined) {
+    if (SafetyPin.activeInstance !== undefined || SandboxManager.getConfig() !== undefined) {
       throw new Error('A sandbox is already active.');
     }
 
-    Sandbox.activeSandbox = this;
+    SafetyPin.activeInstance = this;
     let scratchPath: string | undefined;
     try {
       scratchPath = await mkdtemp(join(tmpdir(), 'sloppi-v2-'));
@@ -86,7 +86,7 @@ export class Sandbox {
       try {
         await SandboxManager.reset();
       } finally {
-        Sandbox.activeSandbox = undefined;
+        SafetyPin.activeInstance = undefined;
         if (scratchPath !== undefined) {
           await rm(scratchPath, {recursive: true, force: true});
         }
@@ -99,13 +99,13 @@ export class Sandbox {
   /**
    * Exposes Execa without awaiting its thenable subprocess or recreating its APIs.
    * Options are trusted host code: file-backed stdio and transforms run outside SRT.
-   * Pipe only into another sandbox.run() subprocess to keep both commands isolated.
+   * Pipe only into another safetyPin.run() subprocess to keep both commands isolated.
    */
   async run<const OptionsType extends RunOptions = Record<string, never>>(command: string, options?: OptionsType): Promise<{process: ReturnType<typeof execa<OptionsType>>}>;
   async run(command: string, options: RunOptions = {}): Promise<unknown> {
     const {scratchPath} = this;
     if (scratchPath === undefined) {
-      throw new Error('Sandbox has not started.');
+      throw new Error('Safety Pin has not started.');
     }
 
     this.commandCount++;
@@ -163,12 +163,12 @@ export class Sandbox {
    * Only the runtime owner can release resources, and only after its commands finish.
    */
   async stop(): Promise<void> {
-    if (Sandbox.activeSandbox !== this) {
+    if (SafetyPin.activeInstance !== this) {
       return;
     }
 
     if (this.scratchPath === undefined || this.commandCount > 0) {
-      throw new Error('Wait for sandbox startup and commands to finish before stopping.');
+      throw new Error('Wait for Safety Pin startup and commands to finish before stopping.');
     }
 
     const {scratchPath} = this;
@@ -179,7 +179,7 @@ export class Sandbox {
       try {
         await rm(scratchPath, {recursive: true, force: true});
       } finally {
-        Sandbox.activeSandbox = undefined;
+        SafetyPin.activeInstance = undefined;
       }
     }
   }

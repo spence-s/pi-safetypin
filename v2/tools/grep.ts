@@ -6,7 +6,7 @@ import {
   truncateLine,
   type GrepToolDetails,
 } from '@earendil-works/pi-coding-agent';
-import type {Sandbox} from '../sandbox.ts';
+import type {SafetyPin} from '../safety-pin.ts';
 import {createReadOperations} from './read.ts';
 
 // Reuse Pi's exact execute signature so this replacement cannot drift from the tool it overrides.
@@ -41,8 +41,8 @@ type RipgrepEvent = {
  * limit. Context is reconstructed afterward because piping ripgrep's context output through
  * `head` would count context rows as matches and could cut off the final match's trailing context.
  */
-export function createSandboxGrepTool(cwd: string, sandbox: Sandbox): ReturnType<typeof createGrepTool> {
-  const readOperations = createReadOperations(sandbox);
+export function createSandboxGrepTool(cwd: string, safetyPin: SafetyPin): ReturnType<typeof createGrepTool> {
+  const readOperations = createReadOperations(safetyPin);
   // Search, formatting, and errors stay together to keep the flow readable.
   const execute: GrepExecute = async (_id, {pattern, path = '.', glob, ignoreCase, literal, context, limit = 100}, signal) => {
     const arguments_ = [
@@ -68,13 +68,13 @@ export function createSandboxGrepTool(cwd: string, sandbox: Sandbox): ReturnType
     let result;
     let destination;
     try {
-      const {process: head} = await sandbox.run(`head -n ${effectiveLimit}`, {
+      const {process: head} = await safetyPin.run(`head -n ${effectiveLimit}`, {
         cwd,
         ...(signal !== undefined && {cancelSignal: signal}),
       });
       destination = head;
       const command = arguments_.map(argument => `'${argument.replaceAll('\'', '\'"\'"\'')}'`).join(' ');
-      const {process: source} = await sandbox.run(command, {
+      const {process: source} = await safetyPin.run(command, {
         cwd,
         ...(signal !== undefined && {cancelSignal: signal}),
         reject: false,

@@ -15,13 +15,14 @@ Leave `package.json` and package wiring out of scope for now.
 
 ## V1 migration plan
 
-V2 is an incremental improvement over V1. We’re already migrating parts of V1. Later, we’ll move V1’s Playwright extension and sub-agents into first-party Safety Pin add-ons that use the same `getSandbox()` API as other add-ons. Both migrations are planned, not part of the current work.
+V2 is an incremental improvement over V1. We’re already migrating parts of V1. Later, we’ll move V1’s Playwright extension and sub-agents into first-party Safety Pin add-ons that use the same `getSafetyPin()` API as other add-ons. Both migrations are planned, not part of the current work.
 
 ## Agreed API
 
-- `getSandbox()` is the entry point. If the sandbox is already loaded, callers get the same instance.
+- `getSafetyPin()` is the entry point. If Safety Pin is already active, callers get the same instance.
 - Otherwise, callers can use the default config, supply their own, or use the exported `loadConfig()` to load and compose it themselves.
 - No separate factory or lifecycle API is needed for this use case.
+- V2 reads `safetypin.json` from the Pi agent directory (`PI_CODING_AGENT_DIR` or `~/.pi/agent`) and `.pi/safetypin.json` from the project. Existing V2 `sandbox.json` files must be renamed manually; V1 config is unchanged.
 
 ## Agreed settings navigation
 

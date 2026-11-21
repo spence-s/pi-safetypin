@@ -1,19 +1,19 @@
 import {Buffer} from 'node:buffer';
 import {realpathSync} from 'node:fs';
 import {createReadTool, type ReadOperations} from '@earendil-works/pi-coding-agent';
-import type {Sandbox} from '../sandbox.ts';
+import type {SafetyPin} from '../safety-pin.ts';
 
 /**
  * Shares sandboxed reads with edit and grep without invoking another tool.
  */
-export function createReadOperations(sandbox: Sandbox): ReadOperations {
+export function createReadOperations(safetyPin: SafetyPin): ReadOperations {
   return {
     /**
      * Checks access inside the sandbox rather than relying on host permissions.
      */
     async access(path) {
       const quotedPath = `'${realpathSync(path).replaceAll('\'', '\'"\'"\'')}'`;
-      const {process} = await sandbox.run(`test -r ${quotedPath}`, {reject: false});
+      const {process} = await safetyPin.run(`test -r ${quotedPath}`, {reject: false});
       const result = await process;
       if (result.exitCode !== 0) {
         throw new Error(result.stderr.trim().length > 0 ? result.stderr.trim() : `Cannot read ${path}`);
@@ -24,7 +24,7 @@ export function createReadOperations(sandbox: Sandbox): ReadOperations {
      */
     async readFile(path) {
       const quotedPath = `'${realpathSync(path).replaceAll('\'', '\'"\'"\'')}'`;
-      const {process} = await sandbox.run(`base64 < ${quotedPath}`, {reject: false});
+      const {process} = await safetyPin.run(`base64 < ${quotedPath}`, {reject: false});
       const result = await process;
       if (result.exitCode !== 0) {
         throw new Error(result.stderr.trim().length > 0 ? result.stderr.trim() : `Cannot read ${path}`);
@@ -37,7 +37,7 @@ export function createReadOperations(sandbox: Sandbox): ReadOperations {
      */
     async detectImageMimeType(path) {
       const quotedPath = `'${realpathSync(path).replaceAll('\'', '\'"\'"\'')}'`;
-      const {process} = await sandbox.run(`file --mime-type -b -- ${quotedPath}`, {reject: false});
+      const {process} = await safetyPin.run(`file --mime-type -b -- ${quotedPath}`, {reject: false});
       const result = await process;
       if (result.exitCode !== 0) {
         throw new Error(result.stderr.trim().length > 0 ? result.stderr.trim() : `Cannot identify ${path}`);
@@ -52,6 +52,6 @@ export function createReadOperations(sandbox: Sandbox): ReadOperations {
 /**
  * Retains Pi's read behavior while replacing its filesystem access.
  */
-export function createSandboxReadTool(cwd: string, sandbox: Sandbox): ReturnType<typeof createReadTool> {
-  return createReadTool(cwd, {operations: createReadOperations(sandbox)});
+export function createSandboxReadTool(cwd: string, safetyPin: SafetyPin): ReturnType<typeof createReadTool> {
+  return createReadTool(cwd, {operations: createReadOperations(safetyPin)});
 }

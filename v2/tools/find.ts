@@ -5,19 +5,19 @@ import {
   resolve,
 } from 'node:path';
 import {createFindTool, type FindOperations} from '@earendil-works/pi-coding-agent';
-import type {Sandbox} from '../sandbox.ts';
+import type {SafetyPin} from '../safety-pin.ts';
 
 /**
  * Keeps glob matching on the host but filesystem enumeration inside the sandbox.
  */
-export function createFindOperations(sandbox: Sandbox): FindOperations {
+export function createFindOperations(safetyPin: SafetyPin): FindOperations {
   return {
     /**
      * Uses sandbox permissions rather than host filesystem visibility.
      */
     async exists(path) {
       const quotedPath = `'${path.replaceAll('\'', '\'"\'"\'')}'`;
-      const {process} = await sandbox.run(`test -e ${quotedPath}`, {reject: false});
+      const {process} = await safetyPin.run(`test -e ${quotedPath}`, {reject: false});
       const result = await process;
       return result.exitCode === 0;
     },
@@ -38,10 +38,10 @@ export function createFindOperations(sandbox: Sandbox): FindOperations {
       ];
       const effectiveLimit = Math.max(0, Math.floor(limit));
       const command = arguments_.map(argument => `'${argument.replaceAll('\'', '\'"\'"\'')}'`).join(' ');
-      const {process: destination} = await sandbox.run(`head -n ${effectiveLimit}`, {cwd: path});
+      const {process: destination} = await safetyPin.run(`head -n ${effectiveLimit}`, {cwd: path});
       let result;
       try {
-        const {process: source} = await sandbox.run(command, {
+        const {process: source} = await safetyPin.run(command, {
           cwd: path,
           reject: false,
           buffer: {stdout: false},
@@ -96,6 +96,6 @@ export function createFindOperations(sandbox: Sandbox): FindOperations {
 /**
  * Retains Pi's find formatting while replacing its filesystem enumeration.
  */
-export function createSandboxFindTool(cwd: string, sandbox: Sandbox): ReturnType<typeof createFindTool> {
-  return createFindTool(cwd, {operations: createFindOperations(sandbox)});
+export function createSandboxFindTool(cwd: string, safetyPin: SafetyPin): ReturnType<typeof createFindTool> {
+  return createFindTool(cwd, {operations: createFindOperations(safetyPin)});
 }

@@ -52,8 +52,8 @@ export class ConfigStore {
 export function getConfigStores(cwd: string) {
   const agentDir = process.env.PI_CODING_AGENT_DIR ?? join(homedir(), '.pi', 'agent');
   return {
-    globalStore: new ConfigStore(join(agentDir, 'sandbox.json')),
-    projectStore: new ConfigStore(join(cwd, '.pi', 'sandbox.json')),
+    globalStore: new ConfigStore(join(agentDir, 'safetypin.json')),
+    projectStore: new ConfigStore(join(cwd, '.pi', 'safetypin.json')),
   };
 }
 

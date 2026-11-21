@@ -7,7 +7,7 @@ const args = ['on', 'off', 'local', 'global', 'status'];
  */
 export function registerSafetyPinUiCommand(pi: ExtensionAPI) {
   pi.registerCommand('safetypin', {
-    description: 'Configure Pi Safety Pin Extension Sandbox and Permissions System',
+    description: 'Configure Safety Pin sandbox permissions',
     /**
      * Suggest only supported scopes that match the user's input.
      */
