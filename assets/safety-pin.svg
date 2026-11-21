@@ -1,8 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 72 72">
-  <rect x="2" y="2" width="68" height="68" rx="16" fill="#bde4ff"/>
-  <g transform="rotate(-35 36 36)" stroke="#184d76" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M47 29H18a8 8 0 1 0 0 16l29 5.8" fill="none" stroke-linecap="butt"/>
-    <path d="m47.3 49.1 8.7 3.5-9.4-.1Z" fill="#184d76" stroke="none"/>
-    <path d="M46 29a4 4 0 0 1 4-4h5a6 6 0 0 1 0 12h-6l2-4h-5z" fill="#eff9ff"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 72 72">
+  <rect x="2" y="2" width="68" height="68" rx="16" fill="#393b3b"/>
+  <g transform="rotate(-35 36 36)" stroke="#8cf3f5" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M53 29H6.75a5.5 6.5 0 1 0 0 13" fill="none"/>
+    <circle cx="7.25" cy="35.5" r="3" fill="none" stroke-width="1"/>
+    <path d="M52 29a4 4 0 0 1 4-4h5a6 6 0 0 1 0 12h-6l2-4h-5z" fill="#393b3b"/>
+  </g>
+  <!-- Pi mark from https://pi.dev/press-kit -->
+  <g transform="translate(9.5 9.5) scale(0.065)">
+    <path fill="#F09082" d="M165.29 165.29H517.36V400H400V282.65H165.29Z"/>
+    <path fill="#4D9ABF" d="M165.29 282.65H282.65V400H400V517.36H282.65V634.72H165.29Z"/>
+    <path fill="#F1BE58" d="M517.36 400H634.72V634.72H517.36Z"/>
+  </g>
+  <!-- Draw the needle in front so the pin wraps around the mark. -->
+  <g transform="rotate(-35 36 36)">
+    <path d="M6.75 42l45.75 9.8" fill="none" stroke="#8cf3f5" stroke-width="2.5"/>
+    <path d="M52.91 50.1 61.5 53.95 52.09 53.5Z" fill="#8cf3f5"/>
   </g>
 </svg>
