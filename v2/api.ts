@@ -1,11 +1,11 @@
 import {resolve} from 'node:path';
 import process from 'node:process';
 import {merge} from 'object-deep-merge';
-import {loadConfig, type Config} from './config.ts';
+import {loadConfig, type Config} from './config/store.ts';
 import {SafetyPin} from './safety-pin.ts';
 
-export {loadConfig, type Config} from './config.ts';
-export {parseConfig} from './schema.ts';
+export {loadConfig, type Config} from './config/store.ts';
+export {parseConfig} from './config/schema.ts';
 
 /**
  * Shares the configured Safety Pin instance without taking ownership of when it runs.

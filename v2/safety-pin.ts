@@ -4,7 +4,7 @@ import {join} from 'node:path';
 import process from 'node:process';
 import {SandboxManager, SandboxRuntimeConfigSchema, type SandboxRuntimeConfig} from '@anthropic-ai/sandbox-runtime';
 import {execa, type Options} from 'execa';
-import {parseConfig, type Config} from './schema.ts';
+import {parseConfig, type Config} from './config/schema.ts';
 
 /**
  * Exposes a subset of execa options
