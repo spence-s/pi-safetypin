@@ -2,12 +2,15 @@ import type {ExtensionAPI} from '@earendil-works/pi-coding-agent';
 import {getSandbox} from './api.ts';
 import type {Sandbox} from './sandbox.ts';
 import {SandboxTools} from './tools/index.ts';
+import {registerSafetyPinUiCommand} from './ui/index.ts';
 
 /**
  * Shares the process-wide sandbox with addons while keeping shutdown owned by Pi.
  */
 export default function SafetyPinExtension(pi: ExtensionAPI): void {
   let sandbox: Sandbox | undefined;
+
+  registerSafetyPinUiCommand(pi);
 
   pi.on('session_start', async (_event, ctx) => {
     const {cwd} = ctx;

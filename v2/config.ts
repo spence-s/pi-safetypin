@@ -47,12 +47,21 @@ export class ConfigStore {
 }
 
 /**
+ * Lets the settings UI and sandbox find the same files without merging their rules.
+ */
+export function getConfigStores(cwd: string) {
+  const agentDir = process.env.PI_CODING_AGENT_DIR ?? join(homedir(), '.pi', 'agent');
+  return {
+    globalStore: new ConfigStore(join(agentDir, 'sandbox.json')),
+    projectStore: new ConfigStore(join(cwd, '.pi', 'sandbox.json')),
+  };
+}
+
+/**
  * Keeps each scope independent on disk while deriving project overrides at load time.
  */
 export async function loadConfig(cwd: string): Promise<Config> {
-  const agentDir = process.env.PI_CODING_AGENT_DIR ?? join(homedir(), '.pi', 'agent');
-  const globalStore = new ConfigStore(join(agentDir, 'sandbox.json'));
-  const projectStore = new ConfigStore(join(cwd, '.pi', 'sandbox.json'));
+  const {globalStore, projectStore} = getConfigStores(cwd);
   const [global, project] = await Promise.all([globalStore.load(), projectStore.load()]);
   return merge(global, project);
 }

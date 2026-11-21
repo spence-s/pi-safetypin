@@ -1,4 +1,4 @@
 
-export async function showFileSystemAccess(scope: string) {
+export async function showFileSystemAccess() {
   //
 }

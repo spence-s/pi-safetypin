@@ -5,7 +5,7 @@ const args = ['on', 'off', 'local', 'global', 'status'];
 /**
  * Keep Safety Pin configuration discoverable through the command menu.
  */
-export default function safetyPinUi(pi: ExtensionAPI) {
+export function registerSafetyPinUiCommand(pi: ExtensionAPI) {
   pi.registerCommand('safetypin', {
     description: 'Configure Pi Safety Pin Extension Sandbox and Permissions System',
     /**
@@ -34,7 +34,7 @@ export default function safetyPinUi(pi: ExtensionAPI) {
         ctx.ui.notify('/safetypin settings configuration requires TUI mode');
       }
 
-      await showLandingScreen(ctx, parsedArgs === 'local' ? 'local' : 'global');
+      await showLandingScreen(ctx);
     },
   });
 }
