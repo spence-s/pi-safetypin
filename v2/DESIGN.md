@@ -8,6 +8,12 @@ Start with what the caller should write. Prefer the API already there. When a ch
 
 Discuss and plan freely, but don't change files without an explicit request. Record agreed decisions here; don't turn proposals into decisions.
 
+Leave `package.json` and package wiring out of scope for now.
+
+## V1 migration plan
+
+V2 is an incremental improvement over V1. We’re already migrating parts of V1. Later, we’ll move V1’s Playwright extension and sub-agents into first-party Safety Pin add-ons that use the same `getSandbox()` API as other add-ons. Both migrations are planned, not part of the current work.
+
 ## Agreed API
 
 - `getSandbox()` is the entry point. If the sandbox is already loaded, callers get the same instance.

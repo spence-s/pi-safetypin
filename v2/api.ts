@@ -23,6 +23,10 @@ export async function getSandbox(options: {cwd?: string} & (
     throw new Error('There is already an active sandbox and configuration cannot be changed via options, remove both config and overrides options');
   }
 
+  if (Sandbox.active !== undefined) {
+    return Sandbox.active;
+  }
+
   const cwd = resolve(options.cwd ?? process.cwd());
 
   return new Sandbox(cwd, config ?? merge(await loadConfig(cwd), overrides ?? {}));
