@@ -27,11 +27,17 @@ export type RunOptions<T extends Options = Options> = T extends Options ? Pick<T
   | 'forceKillAfterDelay'
 > : never;
 
-// SRT owns one process-wide runtime, not an independent runtime per instance.
-let activeSandbox: symbol | undefined;
-
 export class Sandbox {
-  private readonly id = Symbol('Sandbox');
+  private static activeSandbox: Sandbox | undefined;
+
+  /**
+   * Only exposes the runtime owner once it is ready to run commands.
+   */
+  static get active(): Sandbox | undefined {
+    const sandbox = this.activeSandbox;
+    return sandbox?.scratchPath === undefined ? undefined : sandbox;
+  }
+
   private scratchPath: string | undefined;
   private commandCount = 0;
   private readonly cwd: string;
@@ -49,11 +55,11 @@ export class Sandbox {
    * Reserves SRT's shared runtime and keeps its sockets in private writable storage.
    */
   async start(): Promise<void> {
-    if (activeSandbox !== undefined || SandboxManager.getConfig() !== undefined) {
+    if (Sandbox.activeSandbox !== undefined || SandboxManager.getConfig() !== undefined) {
       throw new Error('A sandbox is already active.');
     }
 
-    activeSandbox = this.id;
+    Sandbox.activeSandbox = this;
     let scratchPath: string | undefined;
     try {
       scratchPath = await mkdtemp(join(tmpdir(), 'sloppi-v2-'));
@@ -80,7 +86,7 @@ export class Sandbox {
       try {
         await SandboxManager.reset();
       } finally {
-        activeSandbox = undefined;
+        Sandbox.activeSandbox = undefined;
         if (scratchPath !== undefined) {
           await rm(scratchPath, {recursive: true, force: true});
         }
@@ -154,10 +160,10 @@ export class Sandbox {
   }
 
   /**
-   * Requires callers to finish commands before removing the resources they depend on.
+   * Only the runtime owner can release resources, and only after its commands finish.
    */
   async stop(): Promise<void> {
-    if (activeSandbox !== this.id) {
+    if (Sandbox.activeSandbox !== this) {
       return;
     }
 
@@ -173,7 +179,7 @@ export class Sandbox {
       try {
         await rm(scratchPath, {recursive: true, force: true});
       } finally {
-        activeSandbox = undefined;
+        Sandbox.activeSandbox = undefined;
       }
     }
   }
