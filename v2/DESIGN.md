@@ -19,3 +19,9 @@ V2 is an incremental improvement over V1. We’re already migrating parts of V1.
 - `getSandbox()` is the entry point. If the sandbox is already loaded, callers get the same instance.
 - Otherwise, callers can use the default config, supply their own, or use the exported `loadConfig()` to load and compose it themselves.
 - No separate factory or lifecycle API is needed for this use case.
+
+## Agreed settings navigation
+
+- Use one settings menu, with no Global or Local mode to choose up front.
+- Filesystem Access and Network Access each show global and local rules together and let users edit either scope without leaving the screen.
+- Make the scope explicit for each edit: Global applies to all projects; Local applies to the current project. Leave the layout and interaction details open.
