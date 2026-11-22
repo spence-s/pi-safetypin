@@ -6,6 +6,11 @@ import {getDefaultConfig} from './defaults.ts';
 import {ConfigStore} from './store.ts';
 import type {Config} from './schema.ts';
 
+export * from './schema.ts';
+export * from './defaults.ts';
+export * from './store.ts';
+export type * from './utilities.ts';
+
 /**
  * Lets the settings UI and sandbox find the same files without merging their rules.
  */

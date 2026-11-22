@@ -1,6 +1,6 @@
 import {homedir} from 'node:os';
 import {resolve, sep} from 'node:path';
-import type {Config} from '../config/store.ts';
+import type {Config} from '../config/index.ts';
 
 export const permissions = ['allowRead', 'allowWrite', 'denyRead', 'denyWrite'] as const;
 export const accessOptions = [
