@@ -2,7 +2,7 @@ import {SandboxRuntimeConfigSchema, type SandboxRuntimeConfig} from '@anthropic-
 import {z} from 'zod';
 import type {PartialWithUndefined} from './utilities.ts';
 
-const sandboxSchema = z.strictObject({
+const sandboxSchema = z.looseObject({
   exposeEnvVars: z.array(z.string().regex(/^[A-Z_a-z]\w*$/v)).optional(),
   shareHostHomeDirectory: z.boolean().optional(),
   promptOnNetworkDeny: z.boolean().optional(),

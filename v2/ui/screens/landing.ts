@@ -1,5 +1,5 @@
 import type {ExtensionCommandContext} from '@earendil-works/pi-coding-agent';
-import {showFileSystemAccess} from './filesystem-access.ts';
+import {showFileSystemAccess} from './filesystem-access/index.ts';
 
 /**
  * Keep the initial screen presentation separate from configuration and actions.
