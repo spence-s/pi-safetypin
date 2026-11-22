@@ -167,7 +167,7 @@ export async function showLocations(
     const labelWidth = Math.max(...items.map(item => visibleWidth(item.label)));
     const container = new Container();
     const title = theme.fg('accent', theme.bold('Filesystem Access'));
-    const subtitle = theme.fg('muted', 'Configured access · Defaults + Global + Local · Changes require restarting Pi.');
+    const subtitle = theme.fg('muted', 'Configured access · Defaults + Global + Local · Changes apply after /reload or restarting Pi.');
     const header = theme.fg('dim', `  ${'Location'.padEnd(labelWidth)}  ${'Access'.padEnd(12)}  Source`);
     container.addChild(new Text(title, 0, 0));
     container.addChild(new Text(subtitle, 0, 1));

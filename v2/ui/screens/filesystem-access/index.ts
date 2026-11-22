@@ -22,6 +22,7 @@ export async function showFileSystemAccess(ctx: ExtensionCommandContext): Promis
     {source: 'Global', label: 'Global · All projects', store: globalStore},
     {source: 'Local', label: 'Local · This project', store: projectStore},
   ];
+
   let selectedId: string | undefined;
 
   try {
@@ -85,8 +86,8 @@ export async function showFileSystemAccess(ctx: ExtensionCommandContext): Promis
 
       selectedId = entryId;
       ui.notify(option.rules.length === 0
-        ? 'Rule removed. Changes apply after restarting Pi.'
-        : `Saved to ${destinations[0]?.source}. Changes apply after restarting Pi.`, 'info');
+        ? 'Rule removed. Changes apply after /reload or restarting Pi.'
+        : `Saved to ${destinations[0]?.source}. Changes apply after /reload or restarting Pi.`, 'info');
     }
   } catch (error) {
     ui.notify(`Filesystem settings: ${error instanceof Error ? error.message : String(error)}`, 'error');
