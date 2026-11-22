@@ -8,7 +8,7 @@ import {
   truncateToWidth,
   visibleWidth,
 } from '@earendil-works/pi-tui';
-import {getConfigStores} from '../../config/store.ts';
+import {getConfigStores} from '../../config/index.ts';
 import {
   accessLabel,
   accessOptions,

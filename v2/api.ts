@@ -1,10 +1,10 @@
 import {resolve} from 'node:path';
 import process from 'node:process';
 import {merge} from 'object-deep-merge';
-import {loadConfig, type Config} from './config/store.ts';
+import {loadConfig} from './config/index.ts';
+import type {Config} from './config/schema.ts';
 import {SafetyPin} from './safety-pin.ts';
 
-export {loadConfig, type Config} from './config/store.ts';
 export {parseConfig} from './config/schema.ts';
 
 /**
