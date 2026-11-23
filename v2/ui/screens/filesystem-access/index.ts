@@ -1,5 +1,6 @@
 import type {ExtensionCommandContext} from '@earendil-works/pi-coding-agent';
-import {getConfigStores, loadConfig} from '../../../config/index.ts';
+import {merge} from 'object-deep-merge';
+import {getConfigStores, getDefaultConfig} from '../../../config/index.ts';
 import {
   permissions,
   type Entry,
@@ -9,7 +10,7 @@ import {editLocation} from './edit-location.ts';
 import {showLocations} from './locations.ts';
 
 /**
- * Reloads policy between edits while keeping writes confined to the selected scopes.
+ * Loads the same scope stores used by the list so source rules and effective access stay in sync.
  */
 export async function showFileSystemAccess(ctx: ExtensionCommandContext): Promise<void> {
   if (ctx.mode !== 'tui') {
@@ -27,7 +28,12 @@ export async function showFileSystemAccess(ctx: ExtensionCommandContext): Promis
 
   try {
     while (true) {
-      const effectiveConfig = await loadConfig(cwd);
+      const [defaults, global, project] = await Promise.all([
+        getDefaultConfig(cwd),
+        globalStore.load(),
+        projectStore.load(),
+      ]);
+      const effectiveConfig = merge(defaults, global, project);
 
       /**
        * The selection screen awaits the user selection
