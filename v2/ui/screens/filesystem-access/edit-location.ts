@@ -5,14 +5,15 @@ import {
   resolve,
   sep,
 } from 'node:path';
-import type {ExtensionCommandContext} from '@earendil-works/pi-coding-agent';
+import {getSelectListTheme, type ExtensionCommandContext} from '@earendil-works/pi-coding-agent';
+import {Container, SelectList, Text} from '@earendil-works/pi-tui';
 import type {ConfigStore} from '../../../config/index.ts';
 import {accessOptions, type Entry, type Permission} from '../../utilities.ts';
 
 const globChars = /[*?\[\]\{\}]/v;
 
 /**
- * Collects a complete edit before the parent writes any configuration.
+ * Starts from the configured access and scope before collecting an edit without writing configuration.
  */
 export async function editLocation(
   {cwd, ui}: ExtensionCommandContext,
@@ -67,7 +68,35 @@ export async function editLocation(
 
   const pathLabel = (typeof entry === 'string' ? displayPath : `${displayPath} (literal)`).replaceAll(/\p{Control}/gv, '�');
   const options = (existingRules?.size ?? 0) > 0 ? accessOptions : accessOptions.slice(0, -1);
-  const access = await ui.select(`Access for ${pathLabel}`, options.map(option => option.label));
+  const currentSource = existingRules?.has('Local') ? 'Local' : 'Global';
+  const currentRules = existingRules?.get(currentSource);
+  const selectedIndex = options.findIndex(option => option.rules.length === currentRules?.length
+    && option.rules.every(rule => currentRules.includes(rule)));
+  const access = await ui.custom<string | undefined>((tui, theme, _keybindings, done) => {
+    const container = new Container();
+    const title = theme.fg('accent', theme.bold(`Access for ${pathLabel}`));
+    container.addChild(new Text(title, 0, 1));
+    const list = new SelectList(options.map(option => ({value: option.label, label: option.label})), options.length, getSelectListTheme());
+    list.setSelectedIndex(Math.max(0, selectedIndex));
+    list.onSelect = item => {
+      done(item.value);
+    };
+
+    list.onCancel = () => {
+      done(undefined);
+    };
+
+    container.addChild(list);
+    return Object.assign(container, {
+      /**
+       * Keeps keyboard navigation on the access list beneath the title.
+       */
+      handleInput(data: string) {
+        list.handleInput(data);
+        tui.requestRender();
+      },
+    });
+  });
   const option = options.find(option => option.label === access);
 
   if (option === undefined) {
@@ -76,7 +105,31 @@ export async function editLocation(
 
   let destinations = scopes.filter(({source}) => existingRules?.has(source));
   if (option.rules.length > 0) {
-    const scope = await ui.select(`Save “${option.label}” for ${pathLabel} to`, scopes.map(({label}) => label));
+    const scope = await ui.custom<string | undefined>((tui, theme, _keybindings, done) => {
+      const container = new Container();
+      const title = theme.fg('accent', theme.bold(`Save “${option.label}” for ${pathLabel} to`));
+      container.addChild(new Text(title, 0, 1));
+      const list = new SelectList(scopes.map(({label}) => ({value: label, label})), scopes.length, getSelectListTheme());
+      list.setSelectedIndex(Math.max(0, scopes.findIndex(({source}) => source === currentSource)));
+      list.onSelect = item => {
+        done(item.value);
+      };
+
+      list.onCancel = () => {
+        done(undefined);
+      };
+
+      container.addChild(list);
+      return Object.assign(container, {
+        /**
+         * Keeps keyboard navigation on the scope list beneath the title.
+         */
+        handleInput(data: string) {
+          list.handleInput(data);
+          tui.requestRender();
+        },
+      });
+    });
     const destination = scopes.find(({label}) => label === scope);
     if (destination === undefined) {
       return;
