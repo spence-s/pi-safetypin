@@ -48,7 +48,7 @@ export async function showLocations(
 
   for (const {source, store} of scopes) {
     for (const permission of permissions) {
-      for (const entry of store.config.filesystem?.[permission] ?? []) {
+      for (const entry of store.config.sandbox?.filesystem?.[permission] ?? []) {
         if (typeof entry !== 'string' && (entry.path === undefined || entry.literal !== true)) {
           throw new Error('Invalid filesystem path entry.');
         }
@@ -91,7 +91,7 @@ export async function showLocations(
     let isWriteAllowed = false;
     let isWriteDenied = false;
     for (const permission of permissions) {
-      for (const rule of effectiveConfig.filesystem?.[permission] ?? []) {
+      for (const rule of effectiveConfig.sandbox?.filesystem?.[permission] ?? []) {
         if (typeof rule !== 'string' && (rule.path === undefined || rule.literal !== true)) {
           throw new Error('Invalid filesystem path entry.');
         }

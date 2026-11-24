@@ -60,7 +60,7 @@ export async function showFileSystemAccess(ctx: ExtensionCommandContext): Promis
 
       for (const {store} of destinations) {
         const config = await store.load();
-        const filesystem = {...config.filesystem};
+        const filesystem = {...config.sandbox?.filesystem};
         const nextRules: readonly Permission[] = option.rules;
 
         for (const permission of permissions) {
@@ -86,7 +86,7 @@ export async function showFileSystemAccess(ctx: ExtensionCommandContext): Promis
           }
         }
 
-        store.config = {...config, filesystem};
+        store.config = {...config, sandbox: {...config.sandbox, filesystem}};
         await store.save();
       }
 

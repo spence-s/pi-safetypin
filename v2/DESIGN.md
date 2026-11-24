@@ -24,6 +24,8 @@ V2 is an incremental improvement over V1. We’re already migrating parts of V1.
 - No separate factory or lifecycle API is needed for this use case.
 - V2 reads `safetypin.json` from the Pi agent directory (`PI_CODING_AGENT_DIR` or `~/.pi/agent`) and `.pi/safetypin.json` from the project. Existing V2 `sandbox.json` files must be renamed manually; V1 config is unchanged.
 
+- V2 config nests SRT fields and Safety Pin sandbox options under `sandbox`. Existing root-level SRT fields must be moved manually; old layouts are rejected.
+
 ## Agreed settings navigation
 
 - Use one settings menu, with no Global or Local mode to choose up front.

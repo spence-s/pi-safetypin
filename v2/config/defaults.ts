@@ -35,15 +35,17 @@ export async function getDefaultConfig(cwd: string): Promise<Config> {
   ));
 
   return {
-    network: {
-      allowedDomains: [],
-      deniedDomains: [],
-    },
-    filesystem: {
-      allowRead: [...new Set([cwd, ...skillPaths, ...resolvedSkillPaths])],
-      allowWrite: [cwd],
-      denyRead: cwd === home ? [] : [home],
-      denyWrite: [],
+    sandbox: {
+      network: {
+        allowedDomains: [],
+        deniedDomains: [],
+      },
+      filesystem: {
+        allowRead: [...new Set([cwd, ...skillPaths, ...resolvedSkillPaths])],
+        allowWrite: [cwd],
+        denyRead: cwd === home ? [] : [home],
+        denyWrite: [],
+      },
     },
   };
 }

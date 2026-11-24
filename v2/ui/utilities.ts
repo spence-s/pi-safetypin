@@ -8,4 +8,4 @@ export const accessOptions = [
   {label: 'Remove rule', rules: []},
 ] as const;
 export type Permission = typeof permissions[number];
-export type Entry = NonNullable<NonNullable<Config['filesystem']>['denyRead']>[number];
+export type Entry = NonNullable<NonNullable<NonNullable<Config['sandbox']>['filesystem']>['denyRead']>[number];

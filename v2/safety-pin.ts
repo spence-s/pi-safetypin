@@ -65,10 +65,10 @@ export class SafetyPin {
     try {
       scratchPath = await mkdtemp(join(tmpdir(), 'sloppi-v2-'));
       scratchPath = await realpath(scratchPath);
-      const {network, filesystem} = this.config;
+      const {network, filesystem} = this.config.sandbox ?? {};
       // Fill in required runtime lists only after user overrides have been merged.
       config = SandboxRuntimeConfigSchema.parse({
-        ...this.config,
+        ...this.config.sandbox,
         network: {
           ...network,
           allowedDomains: network?.allowedDomains ?? [],

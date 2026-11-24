@@ -10,22 +10,30 @@ const sandboxSchema = z.looseObject({
 
 // File overrides defer complete-config and cross-field checks to the runtime boundary.
 // eslint-disable-next-line @typescript-eslint/no-deprecated -- Reuse SRT's Zod v3 partial-schema API instead of duplicating its fields.
-const runtimeSchema = SandboxRuntimeConfigSchema.innerType().deepPartial().strict();
-
+const runtimeSchema = SandboxRuntimeConfigSchema.innerType().deepPartial();
 const configObjectSchema = z.looseObject({sandbox: sandboxSchema.optional()});
 
 /**
  * The fully typed user Config object accepted by the sandbox
  */
-export type Config = PartialWithUndefined<SandboxRuntimeConfig> & {
-  sandbox?: z.infer<typeof sandboxSchema> | undefined;
+export type Config = {
+  sandbox?: (PartialWithUndefined<SandboxRuntimeConfig> & z.infer<typeof sandboxSchema>) | undefined;
 };
 
 /**
- * Parses the user Config object
+ * Keeps runtime validation inside the sandbox namespace without duplicating SRT fields.
  */
 export function parseConfig(value: unknown): Config {
-  const {sandbox, ...runtime} = configObjectSchema.parse(value);
+  const {sandbox} = configObjectSchema.parse(value);
+  if (sandbox === undefined) {
+    return {};
+  }
+
+  const {exposeEnvVars, shareHostHomeDirectory, promptOnNetworkDeny, ...runtime} = sandbox;
   const runtimeConfig = runtimeSchema.parse(runtime);
-  return sandbox === undefined ? runtimeConfig : {...runtimeConfig, sandbox};
+  return {
+    sandbox: {
+      ...runtimeConfig, exposeEnvVars, shareHostHomeDirectory, promptOnNetworkDeny,
+    },
+  };
 }
