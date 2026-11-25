@@ -1,6 +1,6 @@
 import type {ExtensionCommandContext} from '@earendil-works/pi-coding-agent';
 import {showFileSystemAccess} from './filesystem-access/index.ts';
-import {showNetworkAccess} from './network-access.ts';
+import {showNetworkAccess} from './network-access/index.ts';
 
 /**
  * Keeps permission editors discoverable without choosing a scope up front.

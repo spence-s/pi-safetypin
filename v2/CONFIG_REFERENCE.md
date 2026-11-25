@@ -221,7 +221,7 @@ The public configuration must describe guarantees we can actually enforce. A sma
 - `config/schema.ts`: V2 validation and network rule schemas.
 - `config/utilities.ts`: scoped loading and additive network composition.
 - `safety-pin.ts`: current V2 runtime configuration boundary.
-- `ui/screens/network-access.ts`: scoped network editor.
+- `ui/screens/network-access/`: scoped network editor.
 - `config/network.ts`: declarative rules to SRT request enforcement.
 - `../src/config.ts`: V1 request-policy schema and scoped editing.
 - `../src/session-manager.ts`: V1 policy-to-SRT translation.
