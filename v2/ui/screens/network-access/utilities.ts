@@ -1,3 +1,4 @@
+/* eslint-disable unicorn/consistent-boolean-name -- Save operations return success so rejected edits keep the screen open. */
 import {getSettingsListTheme, type ExtensionCommandContext} from '@earendil-works/pi-coding-agent';
 import {
   Container,
@@ -45,3 +46,25 @@ export async function showNetworkPage(
   });
 }
 
+/**
+ * Reloads before each scoped write so nested saves preserve unrelated configuration changes.
+ */
+export async function saveNetworkRule(ctx: ExtensionCommandContext, target: NetworkScope, destination: string, rule: NetworkRule | undefined): Promise<boolean> {
+  let {config} = target.store;
+  try {
+    config = await target.store.load();
+    const network = (config.sandbox?.network ?? []).filter(entry => entry.destination !== destination);
+    if (rule !== undefined) {
+      network.push(rule);
+    }
+
+    target.store.config = {...config, sandbox: {...config.sandbox, network}};
+    await target.store.save();
+    ctx.ui.notify(`${rule === undefined ? 'Removed from' : 'Saved to'} ${target.source}. Changes apply after /reload or restarting Pi.`, 'info');
+    return true;
+  } catch (error) {
+    target.store.config = config;
+    ctx.ui.notify(`Could not save network settings: ${error instanceof Error ? error.message : String(error)}`, 'error');
+    return false;
+  }
+}

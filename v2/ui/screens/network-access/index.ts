@@ -5,7 +5,7 @@ import {editRule} from './edit-rule.ts';
 import type {NetworkScope} from './utilities.ts';
 
 /**
- * Reloads both scopes between edits and writes only the scope explicitly selected by the user.
+ * Reloads both scopes after editing so immediately saved rules appear in the destination list.
  */
 export async function showNetworkAccess(ctx: ExtensionCommandContext): Promise<void> {
   if (ctx.mode !== 'tui') {
@@ -27,23 +27,7 @@ export async function showNetworkAccess(ctx: ExtensionCommandContext): Promise<v
         return;
       }
 
-      selectedId = selection;
-      const edit = await editRule(ctx, selection, entries, scopes);
-      if (edit === undefined) {
-        continue;
-      }
-
-      const {destination, target, rule} = edit;
-      selectedId = destination;
-      const config = await target.store.load();
-      const network = (config.sandbox?.network ?? []).filter(entry => entry.destination !== destination);
-      if (rule !== undefined) {
-        network.push(rule);
-      }
-
-      target.store.config = {...config, sandbox: {...config.sandbox, network}};
-      await target.store.save();
-      ctx.ui.notify(`${rule === undefined ? 'Removed from' : 'Saved to'} ${target.source}. Changes apply after /reload or restarting Pi.`, 'info');
+      selectedId = await editRule(ctx, selection, entries, scopes) ?? selection;
     }
   } catch (error) {
     ctx.ui.notify(`Network settings: ${error instanceof Error ? error.message : String(error)}`, 'error');

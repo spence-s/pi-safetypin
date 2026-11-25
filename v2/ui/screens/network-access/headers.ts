@@ -1,14 +1,22 @@
+/* eslint-disable unicorn/consistent-boolean-name -- Save operations return success so rejected edits keep the screen open. */
 import type {ExtensionCommandContext} from '@earendil-works/pi-coding-agent';
 import {requestSchema} from '../../../config/index.ts';
 import {showNetworkPage} from './utilities.ts';
 
 /**
- * Keeps header conditions editable without requiring users to write configuration JSON.
+ * Keeps unfinished headers local and closes Done only after the complete rule has been saved.
  */
-export async function editHeaders(ctx: ExtensionCommandContext, headers: Record<string, string[]>): Promise<Record<string, string[]>> {
+export async function editHeaders(
+  ctx: ExtensionCommandContext,
+  headers: Record<string, string[]>,
+  save: (headers: Record<string, string[]>) => Promise<boolean>,
+): Promise<void> {
   let draft = structuredClone(headers);
   while (true) {
-    const selection = await showNetworkPage(ctx, {title: 'Request headers', subtitle: 'Every named header must match one accepted exact value. Names are case-insensitive.'}, [
+    const selection = await showNetworkPage(ctx, {
+      title: 'Request headers',
+      subtitle: 'Every header must match an exact value; names are case-insensitive · Done saves · Esc: back; unfinished edits discarded.',
+    }, [
       ...Object.entries(draft).map(([name, values]) => ({
         id: `header:${name}`, label: name, currentValue: JSON.stringify(values), values: [''],
       })),
@@ -19,8 +27,16 @@ export async function editHeaders(ctx: ExtensionCommandContext, headers: Record<
         id: 'done', label: 'Done', currentValue: '', values: [''],
       },
     ]);
-    if (selection === undefined || selection === 'done') {
-      return draft;
+    if (selection === undefined) {
+      return;
+    }
+
+    if (selection === 'done') {
+      if (await save(draft)) {
+        return;
+      }
+
+      continue;
     }
 
     let name = selection.slice(7);

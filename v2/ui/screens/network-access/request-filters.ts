@@ -1,14 +1,15 @@
+/* eslint-disable unicorn/consistent-boolean-name -- Save operations return success so rejected edits keep the screen open. */
 import type {ExtensionCommandContext} from '@earendil-works/pi-coding-agent';
 import type {RequestPattern} from '../../../config/index.ts';
 import {editRequest} from './edit-request.ts';
 import {showNetworkPage} from './utilities.ts';
 
 /**
- * Keeps alternative request patterns separate from the ordinary allow/block form.
+ * Updates the in-memory list only after persistence succeeds, so backing out cannot undo completed saves.
  */
-export async function editRequestFilters(ctx: ExtensionCommandContext, requests: RequestPattern[]): Promise<void> {
+export async function editRequestFilters(ctx: ExtensionCommandContext, requests: RequestPattern[], save: (requests: RequestPattern[]) => Promise<boolean>): Promise<void> {
   while (true) {
-    const selection = await showNetworkPage(ctx, {title: 'Request filters', subtitle: 'Any pattern may match. Changes here remain in the draft.'}, [
+    const selection = await showNetworkPage(ctx, {title: 'Request filters', subtitle: 'Any pattern may match · Done saves · Esc: back; saved changes kept.'}, [
       ...requests.map((request, index) => ({
         id: String(index),
         label: `Pattern ${index + 1}`,
@@ -22,16 +23,39 @@ export async function editRequestFilters(ctx: ExtensionCommandContext, requests:
         id: 'done', label: 'Done', currentValue: '', values: [''],
       },
     ]);
-    if (selection === undefined || selection === 'done') {
+    if (selection === undefined) {
       return;
     }
 
-    const index = selection === 'add' ? requests.length : Number(selection);
-    const pattern = await editRequest(ctx, index, requests[index]);
-    if (pattern === 'remove') {
-      requests.splice(index, 1);
-    } else if (pattern !== undefined) {
-      requests[index] = pattern;
+    if (selection === 'done') {
+      if (await save(requests)) {
+        return;
+      }
+
+      continue;
     }
+
+    const index = selection === 'add' ? requests.length : Number(selection);
+
+    /**
+     * Includes the other patterns in each save, while rejected edits leave the saved list untouched.
+     */
+    async function savePattern(pattern: RequestPattern | 'remove'): Promise<boolean> {
+      const next = [...requests];
+      if (pattern === 'remove') {
+        next.splice(index, 1);
+      } else {
+        next[index] = pattern;
+      }
+
+      if (!await save(next)) {
+        return false;
+      }
+
+      requests.splice(0, requests.length, ...next);
+      return true;
+    }
+
+    await editRequest(ctx, index, requests[index], savePattern);
   }
 }

@@ -5,7 +5,7 @@ Status: network rules and HOME behavior below are implemented. Filesystem object
 ## Current implementation
 
 - `sandbox.network` is an array of HTTP/HTTPS destination rules, not an SRT network object.
-- The Network Access editor shows Global and Local rules together, saves only the chosen source, and shows combined access before saving.
+- The Network Access editor shows Global and Local rules together, shows combined access in the destination list, and saves only the chosen source.
 - Rules take effect after `/reload` or restarting Pi, not immediately on save.
 - V2 still accepts SRT's filesystem object (`allowRead`, `denyRead`, `allowWrite`, `denyWrite`). The filesystem proposal below is not implemented.
 - V2 is Safety Pin's clean starting point, not a user migration. There are no legacy-field guards, compatibility exceptions, or config-conversion paths.
@@ -92,14 +92,15 @@ Raw SRT network options are not exposed alongside these rules. External proxy po
 
 ## Network editor
 
-Flow: destination list → rule form → optional request-pattern/header editors → Local/Global scope → save.
+Existing rules: destination list → rule editor in the existing scope → request-pattern/header editors. New destinations choose Local/Global scope before entering the rule editor; choosing scope alone does not create a rule.
 
 - One row per origin, with combined Allow / Block / Filtered access and source scopes.
-- Existing rules load Local values first if present, otherwise Global. When both exist, “Load values from” selects the starting rule without deciding the save destination.
-- The save screen states which scope is replaced and previews combined access.
-- Removal also targets an explicit scope and leaves the other scope untouched.
-- Canceling a rule discards its draft. Saving or canceling returns to the list; canceling the list exits.
-- Files are reloaded before saving so unrelated saved settings are retained. Runtime-generated policy is never written to either source.
+- Existing rules load Local values first if present, otherwise Global. The Scope row selects which source is edited; switching loads that source's saved rule.
+- Done on the header, pattern, or filter-list screen immediately saves the complete valid filtered rule to that scope. No additional parent-screen confirmation is required.
+- Esc goes back, preserving completed saves and discarding unfinished edits on the current screen. Invalid conditions and write errors keep the current screen open without claiming a save.
+- Access changes use an explicit Save. Removing the last filter cannot silently become unrestricted Allow; explicitly choose Allow and Save instead.
+- Rule removal confirms the selected scope and leaves the other scope untouched.
+- Files are reloaded before saving so unrelated saved settings are retained. Runtime-generated policy is never written to either source. Saved changes take effect after `/reload` or restarting Pi.
 
 ## Proposed filesystem configuration
 
