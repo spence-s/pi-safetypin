@@ -205,7 +205,7 @@ async function editRequestFilters(ctx: ExtensionCommandContext, requests: Reques
 }
 
 /**
- * Uses shared destination defaults and scoped writes so the editor matches file-based rules.
+ * Keeps access and filters discoverable in one draft while preserving scoped writes.
  */
 export async function showNetworkAccess(ctx: ExtensionCommandContext): Promise<void> {
   if (ctx.mode !== 'tui') {
@@ -268,6 +268,7 @@ export async function showNetworkAccess(ctx: ExtensionCommandContext): Promise<v
       let stored = matches.find(({scope}) => scope === source)?.rule;
       let access = stored?.access === 'block' ? 'Block' : (stored?.requests === undefined ? 'Allow' : 'Filtered');
       let requests = structuredClone(stored?.access === 'allow' ? stored.requests ?? [] : []);
+      let selectedField: string | undefined;
       while (true) {
         const action = await showNetworkPage(ctx, {
           title: `Network rule · ${destination}`,
@@ -279,13 +280,20 @@ export async function showNetworkAccess(ctx: ExtensionCommandContext): Promise<v
             }]
             : [],
           {
-            id: 'access', label: 'Access', currentValue: access, values: [''],
+            id: 'access', label: 'Access', currentValue: access,
+            description: 'Enter/Space cycles Allow → Filtered → Block. Allow permits all requests; Filtered requires a matching pattern.',
+            values: [''],
           },
-          ...access === 'Filtered'
-            ? [{
-              id: 'filters', label: 'Request filters…', currentValue: `${requests.length} patterns`, values: [''],
-            }]
-            : [],
+          {
+            id: 'filters', label: 'Request filters…',
+            currentValue: access === 'Block'
+              ? 'Inactive — blocked'
+              : (requests.length === 0 ? 'None — Add filter…' : `${requests.length} patterns${access === 'Allow' ? ' (inactive)' : ''}`),
+            description: access === 'Block'
+              ? 'Choose Allow or Filtered before editing filters.'
+              : 'Adding or changing a valid filter enables Filtered access. Removing the last filter requires explicitly choosing Allow to allow everything.',
+            values: [''],
+          },
           {
             id: 'continue', label: 'Continue…', currentValue: '', values: [''],
           },
@@ -294,11 +302,12 @@ export async function showNetworkAccess(ctx: ExtensionCommandContext): Promise<v
               id: 'remove', label: 'Remove rule…', currentValue: '', values: [''],
             }]
             : [],
-        ]);
+        ], selectedField);
         if (action === undefined) {
           break;
         }
 
+        selectedField = action;
         if (action === 'source') {
           const scope = await ctx.ui.select('Load values from', ['Local', 'Global']);
           if (scope === 'Local' || scope === 'Global') {
@@ -312,12 +321,22 @@ export async function showNetworkAccess(ctx: ExtensionCommandContext): Promise<v
         }
 
         if (action === 'access') {
-          access = await ctx.ui.select('Access', ['Allow', 'Block', 'Filtered']) ?? access;
+          access = access === 'Allow' ? 'Filtered' : (access === 'Filtered' ? 'Block' : 'Allow');
           continue;
         }
 
         if (action === 'filters') {
+          if (access === 'Block') {
+            ctx.ui.notify('Choose Allow or Filtered before editing filters.', 'info');
+            continue;
+          }
+
+          const previousFilters = JSON.stringify(requests);
           await editRequestFilters(ctx, requests);
+          if (requests.length > 0 && JSON.stringify(requests) !== previousFilters) {
+            access = 'Filtered';
+          }
+
           continue;
         }
 
