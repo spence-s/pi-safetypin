@@ -26,6 +26,14 @@ V2 is an incremental improvement over V1. We’re already migrating parts of V1.
 
 - V2 config nests SRT fields and Safety Pin sandbox options under `sandbox`. Existing root-level SRT fields must be moved manually; old layouts are rejected.
 
+## Agreed HOME behavior
+
+- `sandbox.isolatedHome` defaults to `false`: commands use the host home directory as `HOME` so tools can discover their usual configuration paths.
+- Set it to `true` to use the temporary sandbox directory as `HOME` instead.
+- This setting grants no filesystem access. Existing home restrictions remain; users explicitly allow the tool configuration/cache paths they need.
+- Temporary files remain in sandbox scratch space in either mode.
+- The unused V2 `shareHostHomeDirectory` config field is replaced by `isolatedHome`.
+
 ## Agreed settings navigation
 
 - Use one settings menu, with no Global or Local mode to choose up front.

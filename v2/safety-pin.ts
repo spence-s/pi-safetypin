@@ -1,5 +1,5 @@
 import {mkdtemp, realpath, rm} from 'node:fs/promises';
-import {tmpdir} from 'node:os';
+import {homedir, tmpdir} from 'node:os';
 import {join} from 'node:path';
 import process from 'node:process';
 import {SandboxManager, SandboxRuntimeConfigSchema, type SandboxRuntimeConfig} from '@anthropic-ai/sandbox-runtime';
@@ -121,6 +121,7 @@ export class SafetyPin {
 
   /**
    * Exposes Execa without awaiting its thenable subprocess or recreating its APIs.
+   * Host HOME preserves tool config discovery; filesystem rules still control access.
    * Options are trusted host code: file-backed stdio and transforms run outside SRT.
    * Pipe only into another safetyPin.run() subprocess to keep both commands isolated.
    */
@@ -148,7 +149,7 @@ export class SafetyPin {
         shell: true,
         extendEnv: false,
         env: {
-          HOME: scratchPath,
+          HOME: this.config.sandbox?.isolatedHome ? scratchPath : homedir(),
           TMPDIR: scratchPath,
           CLAUDE_CODE_TMPDIR: scratchPath,
           PATH: process.env.PATH ?? '/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin',

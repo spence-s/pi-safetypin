@@ -4,7 +4,7 @@ import type {PartialWithUndefined} from './utilities.ts';
 
 const sandboxSchema = z.looseObject({
   exposeEnvVars: z.array(z.string().regex(/^[A-Z_a-z]\w*$/v)).optional(),
-  shareHostHomeDirectory: z.boolean().optional(),
+  isolatedHome: z.boolean().optional(),
   promptOnNetworkDeny: z.boolean().optional(),
 });
 
@@ -29,11 +29,11 @@ export function parseConfig(value: unknown): Config {
     return {};
   }
 
-  const {exposeEnvVars, shareHostHomeDirectory, promptOnNetworkDeny, ...runtime} = sandbox;
+  const {exposeEnvVars, isolatedHome, promptOnNetworkDeny, ...runtime} = sandbox;
   const runtimeConfig = runtimeSchema.parse(runtime);
   return {
     sandbox: {
-      ...runtimeConfig, exposeEnvVars, shareHostHomeDirectory, promptOnNetworkDeny,
+      ...runtimeConfig, exposeEnvVars, isolatedHome, promptOnNetworkDeny,
     },
   };
 }

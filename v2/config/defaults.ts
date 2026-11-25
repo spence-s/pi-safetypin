@@ -36,6 +36,7 @@ export async function getDefaultConfig(cwd: string): Promise<Config> {
 
   return {
     sandbox: {
+      isolatedHome: false,
       network: {
         allowedDomains: [],
         deniedDomains: [],
