@@ -13,18 +13,20 @@ For example, work in a single funcion, then check in, work in a single file, the
 
 Leave `package.json` and package wiring out of scope for now.
 
-## V1 migration plan
+## V2 is Safety Pin's starting point
 
-V2 is an incremental improvement over V1. We’re already migrating parts of V1. Later, we’ll move V1’s Playwright extension and sub-agents into first-party Safety Pin add-ons that use the same `getSafetyPin()` API as other add-ons. Both migrations are planned, not part of the current work.
+V2 is a clean starting point for Safety Pin, not a user migration from V1 or earlier experimental configurations. Do not add migration guards, legacy-field detection, compatibility exceptions, or configuration conversion unless explicitly requested. Define and validate V2's own configuration without special handling for V1 settings.
+
+Playwright and sub-agents are planned as first-party Safety Pin add-ons using the same `getSafetyPin()` API as other add-ons. That work is not part of the current scope.
 
 ## Agreed API
 
 - `getSafetyPin()` is the entry point. If Safety Pin is already active, callers get the same instance.
 - Otherwise, callers can use the default config, supply their own, or use the exported `loadConfig()` to load and compose it themselves.
 - No separate factory or lifecycle API is needed for this use case.
-- V2 reads `safetypin.json` from the Pi agent directory (`PI_CODING_AGENT_DIR` or `~/.pi/agent`) and `.pi/safetypin.json` from the project. Existing V2 `sandbox.json` files must be renamed manually; V1 config is unchanged.
+- V2 reads `safetypin.json` from the Pi agent directory (`PI_CODING_AGENT_DIR` or `~/.pi/agent`) and `.pi/safetypin.json` from the project.
 
-- V2 config nests SRT fields and Safety Pin sandbox options under `sandbox`. Existing root-level SRT fields must be moved manually; old layouts are rejected.
+- V2 config nests SRT fields and Safety Pin sandbox options under `sandbox`.
 
 ## Agreed HOME behavior
 
@@ -32,11 +34,20 @@ V2 is an incremental improvement over V1. We’re already migrating parts of V1.
 - Set it to `true` to use the temporary sandbox directory as `HOME` instead.
 - This setting grants no filesystem access. Existing home restrictions remain; users explicitly allow the tool configuration/cache paths they need.
 - Temporary files remain in sandbox scratch space in either mode.
-- The unused V2 `shareHostHomeDirectory` config field is replaced by `isolatedHome`.
 
 ## Agreed settings navigation
 
 - Use one settings menu, with no Global or Local mode to choose up front.
 - Filesystem Access and Network Access each show global and local rules together and let users edit either scope without leaving the screen.
 - Make the scope explicit for each edit: Global applies to all projects; Local applies to the current project. Leave the layout and interaction details open.
-- As V1 settings screens move to V2, use an explicit loop rather than recursively reopening the screen. Saving or canceling an edit returns to the screen; canceling from the screen exits it.
+- Settings screens use an explicit loop rather than recursively reopening the screen. Saving or canceling an edit returns to the screen; canceling from the screen exits it.
+
+## Implemented network editor and policy
+
+- Network Access uses the filesystem screen's list/form/scope flow, with one row per canonical HTTP/HTTPS origin and combined Allow / Block / Filtered access.
+- Network destinations without a scheme default to HTTPS, except `localhost` (including ports), which defaults to HTTP. Explicit schemes are preserved; validation still requires an exact origin.
+- `sandbox.network` is an array of destination rules, not a raw SRT network object.
+- Unlisted origins are blocked; a block in either scope wins. All matching filtered entries must pass; alternatives within an entry use OR. Local cannot broaden a Global restriction.
+- Edits save only the selected source. Removing one scope's entry leaves the other intact. Changes apply after `/reload` or restarting Pi.
+- Origin enforcement uses request inspection, including for unrestricted HTTPS allows. SRT manages TLS termination; opaque CONNECT/SOCKS traffic is refused. Pinned/mTLS clients and raw TCP may be incompatible. No user-facing inspection bypass or raw-SRT network escape hatch is exposed.
+- `CONFIG_REFERENCE.md` describes the implemented network format, composition, and runtime compatibility. Filesystem object-rule proposals remain unresolved.

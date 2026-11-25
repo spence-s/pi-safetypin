@@ -26,7 +26,9 @@ Choose one. Add `--local` to install for the current project only, then restart 
 
 ## Use
 
-The package loads the V2 proof of concept. Run `/safetypin` to manage filesystem and network access.
+The package loads the V2 proof of concept. Run `/safetypin` to manage filesystem and network access. Network rules allow, block, or filter exact HTTP/HTTPS origins; Global and Local restrictions combine. Changes apply after `/reload` or restarting Pi.
+
+HTTPS access requires TLS inspection; pinned/mTLS clients and raw TCP/SSH are not supported. V2 is Safety Pin's clean starting point, not a user migration—see [V2 configuration](v2/CONFIG_REFERENCE.md).
 
 ### V1
 

@@ -5,6 +5,7 @@ import process from 'node:process';
 import {SandboxManager, SandboxRuntimeConfigSchema, type SandboxRuntimeConfig} from '@anthropic-ai/sandbox-runtime';
 import {execa, type Options} from 'execa';
 import {parseConfig, type Config} from './config/schema.ts';
+import {buildNetworkConfig} from './config/network.ts';
 
 /**
  * Exposes a subset of execa options
@@ -52,7 +53,7 @@ export class SafetyPin {
   }
 
   /**
-   * Reserves SRT's shared runtime and verifies that it actually installed our policy.
+   * Installs generated request enforcement before reserving the shared runtime for commands.
    */
   async start(): Promise<void> {
     if (SafetyPin.activeInstance !== undefined) {
@@ -69,11 +70,7 @@ export class SafetyPin {
       // Fill in required runtime lists only after user overrides have been merged.
       config = SandboxRuntimeConfigSchema.parse({
         ...this.config.sandbox,
-        network: {
-          ...network,
-          allowedDomains: network?.allowedDomains ?? [],
-          deniedDomains: network?.deniedDomains ?? [],
-        },
+        network: buildNetworkConfig(network),
         filesystem: {
           ...filesystem,
           denyRead: filesystem?.denyRead ?? [],

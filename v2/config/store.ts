@@ -1,9 +1,5 @@
 import {mkdir, readFile, writeFile} from 'node:fs/promises';
-import {homedir} from 'node:os';
-import {dirname, join} from 'node:path';
-import process from 'node:process';
-import {merge} from 'object-deep-merge';
-import {getDefaultConfig} from './defaults.ts';
+import {dirname} from 'node:path';
 import {parseConfig, type Config} from './schema.ts';
 
 export type {Config} from './schema.ts';
@@ -20,12 +16,18 @@ export class ConfigStore {
   }
 
   /**
-   * Missing files inherit defaults, but malformed or unreadable files must not be ignored.
+   * Keeps ambiguous same-scope destinations out of settings without rejecting cross-scope overlap.
    */
   async load(): Promise<Config> {
     try {
       const parsed: unknown = JSON.parse(await readFile(this.path, 'utf8'));
-      this.config = parseConfig(parsed);
+      const config = parseConfig(parsed);
+      const destinations = config.sandbox?.network?.map(rule => rule.destination) ?? [];
+      if (new Set(destinations).size !== destinations.length) {
+        throw new Error(`Duplicate network destinations in ${this.path}. Combine request alternatives in one rule.`);
+      }
+
+      this.config = config;
     } catch (error) {
       if (!(error instanceof Error) || !('code' in error) || error.code !== 'ENOENT') {
         throw error;
@@ -38,10 +40,15 @@ export class ConfigStore {
   }
 
   /**
-   * Allows a scope's first save without requiring its settings directory to exist.
+   * Validates the selected source before writing so effective cross-scope rules are never persisted.
    */
   async save(): Promise<void> {
     const config = parseConfig(this.config);
+    const destinations = config.sandbox?.network?.map(rule => rule.destination) ?? [];
+    if (new Set(destinations).size !== destinations.length) {
+      throw new Error(`Duplicate network destinations in ${this.path}. Combine request alternatives in one rule.`);
+    }
+
     await mkdir(dirname(this.path), {recursive: true});
     await writeFile(this.path, `${JSON.stringify(config, undefined, 2)}\n`);
   }

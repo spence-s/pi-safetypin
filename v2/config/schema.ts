@@ -1,34 +1,75 @@
-import {SandboxRuntimeConfigSchema, type SandboxRuntimeConfig} from '@anthropic-ai/sandbox-runtime';
+import {NetworkConfigSchema, SandboxRuntimeConfigSchema, type SandboxRuntimeConfig} from '@anthropic-ai/sandbox-runtime';
 import {z} from 'zod';
 import type {PartialWithUndefined} from './utilities.ts';
 
-const destinationSchema = z.string().refine(
+/**
+ * Mirrors SRT host canonicalization so aliases cannot split the editor and runtime policies.
+ */
+export function normalizeNetworkDestination(destination: string): string {
+  const url = new URL(destination);
+  url.hostname = url.hostname.replace(/\.$/v, '');
+  if (url.hostname.startsWith('[::ffff:')) {
+    const words = url.hostname.slice(8, -1).split(':').map(word => Number.parseInt(word, 16));
+    url.hostname = words.flatMap(word => [Math.floor(word / 256), word % 256]).join('.');
+  }
+
+  return url.origin;
+}
+
+const destinationSchema = z.string().transform(
   /**
-   * Keeps paths and credentials out of connection grants instead of silently discarding them.
+   * Defaults public destinations to TLS while keeping local development URLs convenient.
    */
   destination => {
-    if (!/^https?:\/\/[^#\/?]+\/?$/iv.test(destination)) {
+    if (destination.includes('://')) {
+      return destination;
+    }
+
+    const scheme = /^localhost\.?(?::|\/|$)/iv.test(destination) ? 'http' : 'https';
+    return `${scheme}://${destination}`;
+  },
+).refine(
+  /**
+   * Rejects lossy URL parsing so a path or credential cannot become a broader grant.
+   */
+  destination => {
+    if (!/^https?:\/\/[^\s\p{Control}#\/?\\]+\/?$/iv.test(destination)) {
       return false;
     }
 
     try {
       const url = new URL(destination);
-      return url.username === '' && url.password === '' && !url.hostname.includes('*');
+      const origin = new URL(normalizeNetworkDestination(destination));
+      const port = origin.port === '' ? (origin.protocol === 'https:' ? '443' : '80') : origin.port;
+      return url.username === '' && url.password === '' && !destination.includes('@') && !url.hostname.includes('*')
+        && Number(port) > 0
+        && NetworkConfigSchema.shape.allowedDomains.safeParse([`${origin.hostname}:${port}`]).success;
     } catch {
       return false;
     }
   },
-  'Use an exact HTTP or HTTPS origin without credentials, a path, query, or fragment.',
-);
-const pathSchema = z.string().startsWith('/');
+  'Use an exact HTTP or HTTPS origin without credentials, a path, query, fragment, or wildcard.',
+).transform(normalizeNetworkDestination);
+const pathSchema = z.string().startsWith('/').regex(/^[^\s\p{Control}#?\\]*$/v, 'Use an encoded URL pathname without a query or fragment.');
 const tokenSchema = z.string().regex(/^[\w!#$%\u{26}'*+\-.^`\|~]+$/v);
-const headerValueSchema = z.string().regex(/^[^\n\r]*$/v);
+const headerValueSchema = z.string().regex(/^[\t\u{20}-\u{7E}\u{80}-\u{FF}]*$/v);
 const headerValuesSchema = z.array(headerValueSchema).min(1);
-const requestSchema = z.strictObject({
-  methods: z.array(tokenSchema).min(1).optional(),
+export const requestSchema = z.strictObject({
+  methods: z.array(tokenSchema.transform(
+    /**
+     * Avoids case-dependent surprises when users enter methods in configuration files.
+     */
+    method => method.toUpperCase(),
+  )).min(1).optional(),
   paths: z.array(pathSchema).min(1).optional(),
   pathPrefixes: z.array(pathSchema).min(1).optional(),
-  headers: z.record(tokenSchema, headerValuesSchema).optional(),
+  headers: z.unknown().refine(
+    /**
+     * Check before record parsing: Zod silently discards this reserved key without validating it.
+     */
+    headers => headers === null || typeof headers !== 'object' || !Object.hasOwn(headers, '__proto__'),
+    'The reserved header name __proto__ is not supported.',
+  ).pipe(z.record(tokenSchema, headerValuesSchema)).optional(),
 }).refine(
   /**
    * An empty pattern would accidentally allow every request to a protected destination.
@@ -37,6 +78,7 @@ const requestSchema = z.strictObject({
     || Object.keys(rule.headers ?? {}).length > 0,
   'At least one request condition is required.',
 );
+export type RequestPattern = z.infer<typeof requestSchema>;
 
 const networkObjectRuleSchema = z.discriminatedUnion('access', [
   z.strictObject({
@@ -58,10 +100,13 @@ export const networkRuleSchema = z.union([
   ),
   networkObjectRuleSchema,
 ]);
-export const networkSchema = z.array(networkRuleSchema);
-export type NetworkRule = z.infer<typeof networkRuleSchema>;
+export const networkSchema = z.array(networkRuleSchema, {
+  error: 'sandbox.network must be an array of destination rules.',
+});
+export type NetworkRule = z.infer<typeof networkRuleSchema> & {requests?: RequestPattern[] | undefined};
 
 const sandboxSchema = z.looseObject({
+  network: networkSchema.optional(),
   exposeEnvVars: z.array(z.string().regex(/^[A-Z_a-z]\w*$/v)).optional(),
   isolatedHome: z.boolean().optional(),
   promptOnNetworkDeny: z.boolean().optional(),
@@ -69,18 +114,18 @@ const sandboxSchema = z.looseObject({
 
 // File overrides defer complete-config and cross-field checks to the runtime boundary.
 // eslint-disable-next-line @typescript-eslint/no-deprecated -- Reuse SRT's Zod v3 partial-schema API instead of duplicating its fields.
-const runtimeSchema = SandboxRuntimeConfigSchema.innerType().deepPartial();
+const runtimeSchema = SandboxRuntimeConfigSchema.innerType().omit({network: true}).deepPartial();
 const configObjectSchema = z.looseObject({sandbox: sandboxSchema.optional()});
 
 /**
- * The fully typed user Config object accepted by the sandbox
+ * Keeps network rules declarative while retaining the remaining SRT sandbox fields.
  */
 export type Config = {
-  sandbox?: (PartialWithUndefined<SandboxRuntimeConfig> & z.infer<typeof sandboxSchema>) | undefined;
+  sandbox?: (PartialWithUndefined<Omit<SandboxRuntimeConfig, 'network'>> & z.infer<typeof sandboxSchema>) | undefined;
 };
 
 /**
- * Keeps runtime validation inside the sandbox namespace without duplicating SRT fields.
+ * Validates Safety Pin fields separately from the underlying SRT sandbox settings.
  */
 export function parseConfig(value: unknown): Config {
   const {sandbox} = configObjectSchema.parse(value);
@@ -88,11 +133,11 @@ export function parseConfig(value: unknown): Config {
     return {};
   }
 
-  const {exposeEnvVars, isolatedHome, promptOnNetworkDeny, ...runtime} = sandbox;
+  const {network, exposeEnvVars, isolatedHome, promptOnNetworkDeny, ...runtime} = sandbox;
   const runtimeConfig = runtimeSchema.parse(runtime);
   return {
     sandbox: {
-      ...runtimeConfig, exposeEnvVars, isolatedHome, promptOnNetworkDeny,
+      ...runtimeConfig, network, exposeEnvVars, isolatedHome, promptOnNetworkDeny,
     },
   };
 }

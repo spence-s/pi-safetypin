@@ -43,8 +43,22 @@ export function getConfigStores(cwd: string) {
 }
 
 /**
-     * Applies defaults at load time so settings files only contain user-supplied rules.
-     */
+ * Adds network entries instead of replacing them so every scope's restrictions survive.
+ */
+export function mergeConfigs(base: Config, ...overrides: Config[]): Config {
+  const config = merge(base, {}, ...overrides);
+  return {
+    ...config,
+    sandbox: {
+      ...config.sandbox,
+      network: [base, ...overrides].flatMap(scope => scope.sandbox?.network ?? []),
+    },
+  };
+}
+
+/**
+ * Applies defaults at load time so settings files only contain user-supplied rules.
+ */
 export async function loadConfig(cwd: string): Promise<Config> {
   const {globalStore, projectStore} = getConfigStores(cwd);
   const [defaults, global, project] = await Promise.all([
@@ -52,5 +66,5 @@ export async function loadConfig(cwd: string): Promise<Config> {
     globalStore.load(),
     projectStore.load(),
   ]);
-  return merge(defaults, global, project);
+  return mergeConfigs(defaults, global, project);
 }

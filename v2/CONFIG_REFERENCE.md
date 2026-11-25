@@ -1,18 +1,16 @@
-# V2 configuration reference (proposal)
+# V2 configuration reference
 
-Status: network and filesystem changes below are proposals for review. The Current implementation and HOME configuration sections describe implemented behavior. `DESIGN.md` remains the reference for agreed V2 decisions.
-
-This document describes proposed Safety Pin network and filesystem configuration, how Global and Local rules would combine, and how we would translate them into Anthropic Sandbox Runtime (SRT) settings. It is a working reference, not yet an exhaustive schema. Field names, defaults, and semantics below are recommendations until agreed.
+Status: network rules and HOME behavior below are implemented. Filesystem object entries and inheritance remain proposals; the runtime still uses SRT's filesystem lists. `DESIGN.md` records agreed decisions.
 
 ## Current implementation
 
-- V2 currently accepts SRT's filesystem object (`allowRead`, `denyRead`, `allowWrite`, `denyWrite`), not the path objects proposed below.
-- V2 accepts SRT's network configuration object under `sandbox.network`, including `allowedDomains` and `deniedDomains`. It does not yet implement the proposed rules below; the Network Access screen is a stub.
-- V1 stores connection rules in SRT's network lists and custom request rules in `sandbox.requestPolicies`.
-- V1 translates those request policies into SRT's `network.filterRequest` callback and enables `network.tlsTerminate` when policies exist.
-- V1 uses SRT's built-in proxy, not a separate Safety Pin proxy service.
+- `sandbox.network` is an array of HTTP/HTTPS destination rules, not an SRT network object.
+- The Network Access editor shows Global and Local rules together, saves only the chosen source, and shows combined access before saving.
+- Rules take effect after `/reload` or restarting Pi, not immediately on save.
+- V2 still accepts SRT's filesystem object (`allowRead`, `denyRead`, `allowWrite`, `denyWrite`). The filesystem proposal below is not implemented.
+- V2 is Safety Pin's clean starting point, not a user migration. There are no legacy-field guards, compatibility exceptions, or config-conversion paths.
 
-Verified against installed SRT 0.0.83. Its API is experimental and may change.
+Verified against SRT 0.0.83. Its API is experimental and may change.
 
 ## HOME configuration (implemented)
 
@@ -31,177 +29,77 @@ Verified against installed SRT 0.0.83. Its API is experimental and may change.
 - This setting grants no filesystem access. The host home remains blocked by default except for existing workspace/skill grants; explicitly allow each tool's configuration/cache paths as needed.
 - `TMPDIR` and `CLAUDE_CODE_TMPDIR` continue to use sandbox scratch space in either mode.
 
-This replaces the unused V2 `sandbox.shareHostHomeDirectory` field; use `isolatedHome` in V2 configuration.
-
-## Why change the configuration?
-
-One destination should have one place to describe connection access and optional request restrictions. Users should not have to maintain a domain allowlist separately from the policies that restrict it.
-
-This means Safety Pin would own its network configuration format rather than simply extending SRT's format. We would still use SRT's domain rules and proxy internally, but raw `allowedDomains` / `deniedDomains` would no longer be the user-facing interface.
-
-The same principle applies to files: describe the access a path should have instead of asking users to reason across four lists with different precedence rules.
-
-Changing the format is not the same as dropping the underlying capabilities. We need to explicitly document which capabilities Safety Pin exposes, translates, or leaves unsupported.
-
-## Proposed network configuration
-
-Use an array of destination objects instead of separate connection and request-policy lists. Illustrative placement:
+## Network configuration
 
 ```json
 {
   "sandbox": {
     "network": [
-      {
-        "destination": "https://registry.npmjs.org",
-        "access": "allow"
-      },
+      {"destination": "https://registry.npmjs.org", "access": "allow"},
       {
         "destination": "https://api.github.com",
         "access": "allow",
-        "requests": [
-          {
-            "methods": ["GET"],
-            "pathPrefixes": ["/repos/my-org"]
-          }
-        ]
+        "requests": [{"methods": ["GET"], "pathPrefixes": ["/repos/my-org"]}]
       },
-      {
-        "destination": "https://example.com",
-        "access": "block"
-      }
+      {"destination": "https://example.com", "access": "block"}
     ]
   }
 }
 ```
 
-Making `sandbox.network` an array is a breaking change from its current SRT object shape. Placement is not settled: SRT's other network options still need a home. Do not implement this example by silently discarding those settings.
+An origin string in a settings file, such as `"registry.npmjs.org"`, is shorthand for an unrestricted allow entry. A missing scheme defaults to HTTPS, except for `localhost` (case-insensitive, with an optional port or trailing DNS dot), which defaults to HTTP. For example, `example.com` becomes `https://example.com`, and `localhost:3000` becomes `http://localhost:3000`. Explicit HTTP/HTTPS schemes are preserved. These defaults apply to both strings and `destination` fields, including TUI input; saved rules use canonical explicit origins.
 
-### Destination fields
-
-| Field | Proposed meaning |
+| Field | Meaning |
 | --- | --- |
-| `destination` | An HTTP or HTTPS origin: scheme, hostname, and optional port. No credentials, query, fragment, or non-root path. |
+| `destination` | Exact HTTP or HTTPS origin: scheme, hostname, optional port. No credentials, wildcard, query, fragment, or non-root path. |
 | `access` | Required: `allow` or `block`. |
-| `requests` | Optional nonempty array of allowed request patterns. Valid only for `allow`. Omitted means no method/path/header restrictions from this entry. |
+| `requests` | Optional nonempty array of allowed request patterns. Only valid for `allow`; omitted means this entry adds no request restrictions. |
 
-Recommend starting with exact origins. Wildcards need separate syntax and overlap semantics; do not assume a wildcard is a valid URL origin.
+Origins are canonicalized before comparison: host casing, a trailing DNS dot, default ports, IDNs, and IP spellings follow URL/SRT normalization. Duplicate canonical destinations in one settings file are rejected. Use multiple patterns in a single entry for alternatives. Cross-scope entries retain their separate restrictions.
 
-Normalize host casing, trailing DNS dots, and default ports consistently before comparing entries. Reject malformed rules rather than dropping them or falling back to unrestricted access.
+### Request patterns
 
-### Request fields
-
-Retain V1's useful predicates:
-
-| Field | Proposed meaning |
+| Field | Meaning |
 | --- | --- |
-| `methods` | Nonempty list of accepted HTTP methods, normalized to uppercase. |
+| `methods` | Nonempty list of HTTP methods, normalized to uppercase. |
 | `paths` | Nonempty list of exact URL pathnames. |
-| `pathPrefixes` | Nonempty list of path prefixes, matched at a segment boundary. `/repos/my-org` matches itself and `/repos/my-org/example`, not `/repos/my-organization`. |
-| `headers` | Map of case-insensitive header names to nonempty lists of accepted exact values. Every named header must match. |
+| `pathPrefixes` | Nonempty list of prefixes matched at segment boundaries. `/repos/org` matches itself and `/repos/org/example`, not `/repos/organization`. |
+| `headers` | Header-name map to nonempty lists of accepted exact values. Names are case-insensitive; every named header must match. |
 
-Within one request pattern, method, path, and header conditions combine with AND. If both `paths` and `pathPrefixes` exist, either path condition can satisfy the path portion. Patterns within `requests` combine with OR.
+Within a pattern, method, path, and header conditions combine with AND. Exact paths and prefixes are alternatives for the path portion. Patterns in one entry combine with OR. A missing condition is unrestricted; an empty pattern or `requests: []` is rejected.
 
-Reject empty request patterns and `requests: []`; neither should accidentally become unrestricted access. Query parameters and body content are not covered by these predicates. A matching path does not guarantee a safe operation or safe payload.
+Use URL pathnames, not full URLs, queries, or fragments. Query parameters and body content are not checked. Paths describe what the proxy sees, not application-specific routing or authorization; matching a path does not guarantee a safe operation or payload. Header conditions do not inject headers or credentials. Avoid storing secrets as accepted header values: they are visible in configuration and the editor.
 
-A destination is an origin, not a base path. Do not accept `https://example.com/api` and silently open the whole host; express `/api` as a request restriction instead.
+### Global and Local composition
 
-## Proposed network Global / Local combination
+1. Unlisted origins are blocked.
+2. An allow in either scope grants the origin unless another matching entry blocks it.
+3. A block in either scope wins.
+4. Every matching filtered entry must pass; alternatives within each entry remain OR.
+5. An unrestricted allow never cancels another scope's filters.
 
-Global means all projects; Local means the current project. Both appear together in the UI, but edits write only to the selected source file.
+For example, Global GET-only plus Local `/repos/my-org`-only requires both GET and that path. An empty Local array contributes no restrictions or grants; it does not clear Global rules. Removing a Local rule can reveal inherited Global access. Use Local Block to disable a Global grant.
 
-Recommendation: combine grants without letting one scope silently erase another scope's restrictions:
+`loadConfig()` and `mergeConfigs()` explicitly concatenate network entries. Fully composed configurations can therefore contain repeated origins representing independent restrictions; the runtime applies them conjunctively. Do not save a composed configuration over either source file. `getSafetyPin({overrides})` uses the same additive network composition. A directly supplied `config` remains the caller's complete policy.
 
-1. Unlisted destinations are blocked.
-2. An allow entry in either scope can grant a destination.
-3. A matching block entry in either scope wins over allows.
-4. All matching filtered entries must be satisfied. Within each entry, any one request pattern may match.
-5. An unrestricted allow entry does not cancel a filtered entry from the other scope.
+### Enforcement and compatibility
 
-Example: Global allows GitHub with only GET requests; Local allows GitHub with only `/repos/my-org` paths. Effective access requires GET **and** a matching path. Local cannot broaden that Global grant to POST.
+Safety Pin generates SRT host/port grants, enables a strict allowlist, and evaluates origin and request restrictions in SRT's `filterRequest`. The callback checks the proxy's actual scheme and connection target, not only the client-supplied URL. Scheme-distinct rules sharing a host/port remain distinct.
 
-This is a proposed safety-oriented policy, not V1 compatibility. V1 combines alternative request policies for a destination with OR; migration must account for the difference.
+HTTPS access, including unrestricted Allow, requires TLS inspection to enforce origin semantics. SRT creates the CA and configures child trust. Host-header/SNI mismatches and ambiguous request targets are refused. Opaque CONNECT and SOCKS tunnels are refused; there is no raw TCP/SSH bypass. Certificate-pinned clients, mTLS, or tools that ignore proxy/CA configuration may fail; inspection is not silently disabled for them.
 
-Recommend rejecting duplicate canonical destinations within a single scope: use multiple request patterns in one entry instead. Global and Local may each contain an entry for the same destination.
+Raw SRT network options are not exposed alongside these rules. External proxy ports, TLS exclusions, arbitrary callbacks, local-binding grants, custom Unix socket grants, and parent proxy settings are not part of the network-rule format. Runtime-owned scratch/proxy socket access remains managed internally. Further advanced options need a design that preserves request enforcement.
 
-Do not rely on a generic deep merge to produce these semantics. Load and validate each scope, retain its provenance, then explicitly derive the effective network policy. Do not persist the computed policy over either source file.
+## Network editor
 
-An empty Local array contributes no rules; it does not clear Global grants. Turning off inherited access requires an explicit Local block.
+Flow: destination list → rule form → optional request-pattern/header editors → Local/Global scope → save.
 
-Open question: should Local ever be allowed to replace or broaden a Global restriction? If so, that needs an explicit design rather than an incidental array-merge behavior.
-
-## Network translation into SRT
-
-The config layer loads and validates Safety Pin rules. At the runtime boundary, translate the effective policy into SRT configuration and executable matching logic. JSON configuration must not contain callbacks.
-
-1. **Resolve scopes and normalize destinations.** Keep source information for UI explanations and conflicts.
-2. **Derive connection grants.** Extract host and port from allowed origins to populate SRT's `network.allowedDomains`. No Safety Pin grant means no SRT grant.
-3. **Apply blocks.** Use `network.deniedDomains` where its host/port semantics express the intended block exactly. Enforce finer distinctions in the callback.
-4. **Build `network.filterRequest`.** Evaluate the canonical destination, scheme, and effective request restrictions; deny unmatched requests. Do not use an allow-by-default callback to compensate for a broad connection grant.
-5. **Enable `network.tlsTerminate` when HTTPS inspection is required.** SRT manages the interception CA and client trust configuration. Reject configurations that exclude a filtered HTTPS destination from termination.
-6. **Close opaque bypasses.** SRT exposes `refuseOpaqueTunnels` for non-inspectable CONNECT and SOCKS traffic. Establish the enforcement posture before claiming request restrictions are guaranteed.
-7. **Initialize or restart the runtime.** SRT 0.0.83 captures `filterRequest` when the proxy starts; changing a config file alone does not replace that callback.
-
-### Origin semantics are stricter than SRT connection lists
-
-SRT's connection rules describe host/port, not scheme. A grant for `https://example.com` becomes a connection grant for `example.com:443`, but that alone does not enforce HTTPS. Similarly, a block for `http://example.com:443` cannot safely become an unconditional host/port block if HTTPS on that port should remain allowed.
-
-Recommendation: enforce scheme distinctions through request inspection and reject opaque traffic in this origin-based model. HTTPS origins may therefore require termination even without method/path/header filters. Alternatively, choose host/port destinations and explicitly give up scheme-specific semantics. This choice needs agreement before implementation.
-
-`refuseOpaqueTunnels` is a broad runtime setting, not a per-destination exception list. If we later support SSH or other raw TCP traffic, we must design that alongside HTTP policy rather than quietly bypassing it.
-
-## Network SRT capability mapping
-
-This table covers network capabilities. The filesystem mapping follows below; other SRT capabilities still need an inventory.
-
-| SRT capability | Proposed Safety Pin treatment |
-| --- | --- |
-| `allowedDomains`, `deniedDomains` | Generated internally from destination entries; not accepted as a second user-facing source of truth. |
-| `filterRequest` | Generated from our request patterns; SRT does not supply our declarative policy language. |
-| `tlsTerminate` | Managed as required for enforcement; any advanced overrides must not bypass protected destinations. |
-| `refuseOpaqueTunnels` | Managed as part of enforcement; compatibility impact must be explicit. |
-| Host/port wildcards | Deferred pending syntax and overlap decisions. |
-| `allowLocalBinding` | Separate advanced capability; placement and support undecided. It can weaken network isolation. |
-| `allowUnixSockets`, `allowAllUnixSockets` | Not HTTP destination rules. Placement and user-facing support undecided; preserve runtime-owned socket access. |
-| Resolved-address restrictions, proxy chaining, other SRT network options | Inventory and support decisions still needed; do not assume automatic passthrough. |
-
-No unrestricted raw-SRT escape hatch is proposed here. Such an escape hatch could conflict with the guarantees shown by the editor.
-
-## Proposed network editing screen
-
-Follow the agreed navigation: one Network Access screen showing Global and Local rules together, with explicit scope for every edit.
-
-```text
-Network Access
-Unlisted destinations are blocked.
-
-Destination                  Access       Scope
-https://registry.npmjs.org   Allowed      Global
-https://api.github.com      Filtered     Local
-https://example.com         Blocked      Local
-
-Add destination…
-```
-
-The normal destination editor asks for destination, scope, and Allow / Block. An allowed destination offers All requests / Only matching requests.
-
-Recommendation: put detailed request patterns behind a separate “Request filters…” editor. Ordinary allow/block edits stay small; multiple alternative patterns have room to be readable. Headers are advanced fields, not part of every ordinary edit.
-
-Show effective restrictions and their source when Global and Local overlap. Distinguish “this entry allows all requests” from “effective access is filtered by another entry.” Removing a Local entry must not imply inherited Global access was removed.
-
-Do not expose proxy switches, certificates, or SRT callback terminology in the normal workflow. Explain inspection compatibility limits when relevant. Use an explicit screen loop; save/cancel returns to the list and cancel from the list exits.
-
-## Compatibility and open decisions
-
-Before implementation, settle:
-
-- Array placement and the home for remaining SRT network options.
-- Origin versus host/port destinations, and the resulting TLS/opaque-traffic posture.
-- Global/Local restriction composition and any override mechanism.
-- Whether wildcards are needed in the first version.
-- Migration of V1 rules and existing V2 raw SRT network objects. Do not silently reinterpret old files or weaken restrictions.
-- Certificate-pinning, mTLS, and non-HTTP compatibility: inspection can break these clients, and bypassing inspection cannot preserve request-level guarantees.
-
-The filesystem proposal below has additional mapping decisions. Other Safety Pin fields and SRT capabilities still need to be added before this is a complete configuration reference.
+- One row per origin, with combined Allow / Block / Filtered access and source scopes.
+- Existing rules load Local values first if present, otherwise Global. When both exist, “Load values from” selects the starting rule without deciding the save destination.
+- The save screen states which scope is replaced and previews combined access.
+- Removal also targets an explicit scope and leaves the other scope untouched.
+- Canceling a rule discards its draft. Saving or canceling returns to the list; canceling the list exits.
+- Files are reloaded before saving so unrelated saved settings are retained. Runtime-generated policy is never written to either source.
 
 ## Proposed filesystem configuration
 
@@ -320,10 +218,11 @@ The public configuration must describe guarantees we can actually enforce. A sma
 
 ## Implementation references
 
-- `config/schema.ts`: current V2 SRT-derived schema.
-- `config/utilities.ts`: current V2 loading and generic merging.
+- `config/schema.ts`: V2 validation and network rule schemas.
+- `config/utilities.ts`: scoped loading and additive network composition.
 - `safety-pin.ts`: current V2 runtime configuration boundary.
-- `ui/screens/network-access.ts`: current V2 screen stub.
+- `ui/screens/network-access.ts`: scoped network editor.
+- `config/network.ts`: declarative rules to SRT request enforcement.
 - `../src/config.ts`: V1 request-policy schema and scoped editing.
 - `../src/session-manager.ts`: V1 policy-to-SRT translation.
 - [SRT filesystem and network documentation](https://github.com/anthropic-experimental/sandbox-runtime#network-configuration).

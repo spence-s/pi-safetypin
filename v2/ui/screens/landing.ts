@@ -1,8 +1,9 @@
 import type {ExtensionCommandContext} from '@earendil-works/pi-coding-agent';
 import {showFileSystemAccess} from './filesystem-access/index.ts';
+import {showNetworkAccess} from './network-access.ts';
 
 /**
- * Keep the initial screen presentation separate from configuration and actions.
+ * Keeps permission editors discoverable without choosing a scope up front.
  */
 export async function showLandingScreen(ctx: ExtensionCommandContext): Promise<void> {
   const selection = await ctx.ui.select('Safety Pin Config Wizard', [
@@ -19,6 +20,7 @@ export async function showLandingScreen(ctx: ExtensionCommandContext): Promise<v
     }
 
     case 'Network Access': {
+      await showNetworkAccess(ctx);
       break;
     }
 

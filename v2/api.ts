@@ -1,11 +1,10 @@
 import {resolve} from 'node:path';
 import process from 'node:process';
-import {merge} from 'object-deep-merge';
-import {loadConfig, type Config} from './config/index.ts';
+import {loadConfig, mergeConfigs, type Config} from './config/index.ts';
 import {SafetyPin} from './safety-pin.ts';
 
 /**
- * Shares the configured Safety Pin instance without taking ownership of when it runs.
+ * Shares runtime ownership while keeping file and caller-supplied network restrictions additive.
  */
 export async function getSafetyPin(options: {cwd?: string} & (
   | {config: Config; overrides?: never}
@@ -26,5 +25,5 @@ export async function getSafetyPin(options: {cwd?: string} & (
 
   const cwd = resolve(options.cwd ?? process.cwd());
 
-  return new SafetyPin(cwd, config ?? merge(await loadConfig(cwd), overrides ?? {}));
+  return new SafetyPin(cwd, config ?? mergeConfigs(await loadConfig(cwd), overrides ?? {}));
 }
