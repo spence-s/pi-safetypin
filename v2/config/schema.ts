@@ -38,7 +38,7 @@ const requestSchema = z.strictObject({
   'At least one request condition is required.',
 );
 
-export const networkRuleSchema = z.discriminatedUnion('access', [
+const networkObjectRuleSchema = z.discriminatedUnion('access', [
   z.strictObject({
     destination: destinationSchema,
     access: z.literal('allow'),
@@ -48,6 +48,15 @@ export const networkRuleSchema = z.discriminatedUnion('access', [
     destination: destinationSchema,
     access: z.literal('block'),
   }),
+]);
+export const networkRuleSchema = z.union([
+  destinationSchema.transform(
+    /**
+     * Keeps downstream policy handling identical for shorthand and explicit allow entries.
+     */
+    destination => ({destination, access: 'allow' as const}),
+  ),
+  networkObjectRuleSchema,
 ]);
 export const networkSchema = z.array(networkRuleSchema);
 export type NetworkRule = z.infer<typeof networkRuleSchema>;
