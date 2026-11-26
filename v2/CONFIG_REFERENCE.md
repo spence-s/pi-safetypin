@@ -96,9 +96,9 @@ Existing rules: destination list → rule editor in the existing scope → reque
 
 - One row per origin, with combined Allow / Block / Filtered access and source scopes.
 - Existing rules load Local values first if present, otherwise Global. The Scope row selects which source is edited; switching loads that source's saved rule.
-- Done on the header, pattern, or filter-list screen immediately saves the complete valid filtered rule to that scope. No additional parent-screen confirmation is required.
+- Done on the header, pattern, or filter-list screen immediately saves the complete valid rule to that scope. No additional parent-screen confirmation is required.
 - Esc goes back, preserving completed saves and discarding unfinished edits on the current screen. Invalid conditions and write errors keep the current screen open without claiming a save.
-- Access changes use an explicit Save. Removing the last filter cannot silently become unrestricted Allow; explicitly choose Allow and Save instead.
+- The Access option toggles only Allow / Block, with an explicit Save. Filters restrict Allow; the destination list still labels those rules Filtered. Removing the last filter immediately saves unrestricted Allow without confirmation.
 - Rule removal confirms the selected scope and leaves the other scope untouched.
 - Files are reloaded before saving so unrelated saved settings are retained. Runtime-generated policy is never written to either source. Saved changes take effect after `/reload` or restarting Pi.
 

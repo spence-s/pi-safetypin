@@ -5,7 +5,7 @@ import {editRule} from './edit-rule.ts';
 import type {NetworkScope} from './utilities.ts';
 
 /**
- * Reloads both scopes after editing so immediately saved rules appear in the destination list.
+ * Loads Global first for list ordering and reloads both scopes after edits to show completed saves.
  */
 export async function showNetworkAccess(ctx: ExtensionCommandContext): Promise<void> {
   if (ctx.mode !== 'tui') {
@@ -14,8 +14,8 @@ export async function showNetworkAccess(ctx: ExtensionCommandContext): Promise<v
 
   const {globalStore, projectStore} = getConfigStores(ctx.cwd);
   const scopes: NetworkScope[] = [
-    {source: 'Local', label: 'Local · This project', store: projectStore},
     {source: 'Global', label: 'Global · All projects', store: globalStore},
+    {source: 'Local', label: 'Local · This project', store: projectStore},
   ];
   let selectedId: string | undefined;
   try {

@@ -10,7 +10,7 @@ import {
 } from './utilities.ts';
 
 /**
- * Establishes the save scope before editing so completed filters survive backing out of parent screens.
+ * Keeps filters independent of the Allow/Block choice while saving completed edits to the selected scope.
  */
 export async function editRule(ctx: ExtensionCommandContext, selection: string, entries: ScopedRule[], scopes: NetworkScope[]): Promise<string | undefined> {
   let destination = selection;
@@ -40,17 +40,17 @@ export async function editRule(ctx: ExtensionCommandContext, selection: string, 
 
   let target = initialTarget;
   let stored: NetworkRule | undefined = target.store.config.sandbox?.network?.find(rule => rule.destination === destination);
-  let access = stored?.access === 'block' ? 'Block' : (stored?.requests === undefined ? 'Allow' : 'Filtered');
+  let access = stored?.access === 'block' ? 'Block' : 'Allow';
   let requests = structuredClone(stored?.access === 'allow' ? stored.requests ?? [] : []);
 
   /**
-   * Saves only complete filtered rules; an empty list must never silently grant unrestricted access.
+   * Omits an empty filter list because Allow without filters means unrestricted requests to this origin.
    */
   // eslint-disable-next-line unicorn/consistent-boolean-name -- This persistence boundary returns whether the edit was committed.
   async function saveFilters(next: RequestPattern[]): Promise<boolean> {
-    const result = networkRuleSchema.safeParse({destination, access: 'allow', requests: next});
+    const result = networkRuleSchema.safeParse({destination, access: 'allow', ...next.length > 0 && {requests: next}});
     if (!result.success) {
-      ctx.ui.notify('Keep at least one valid filter. To allow everything, go back and explicitly choose Allow and Save.', 'warning');
+      ctx.ui.notify('Request filters must contain valid conditions.', 'warning');
       return false;
     }
 
@@ -59,7 +59,7 @@ export async function editRule(ctx: ExtensionCommandContext, selection: string, 
     }
 
     stored = result.data;
-    access = 'Filtered';
+    access = 'Allow';
     return true;
   }
 
@@ -76,17 +76,17 @@ export async function editRule(ctx: ExtensionCommandContext, selection: string, 
       },
       {
         id: 'access', label: 'Access', currentValue: access,
-        description: 'Enter/Space cycles Allow → Filtered → Block; Save commits. HTTPS requires inspection; pinned/mTLS clients and raw TCP are unsupported.',
+        description: 'Enter/Space toggles Allow ↔ Block; Save commits. HTTPS requires inspection; pinned/mTLS clients and raw TCP are unsupported.',
         values: [''],
       },
       {
         id: 'filters', label: 'Request filters…',
         currentValue: access === 'Block'
           ? 'Inactive — blocked'
-          : (requests.length === 0 ? 'None — Add filter…' : `${requests.length} patterns${access === 'Allow' ? ' (inactive)' : ''}`),
+          : (requests.length === 0 ? 'None — Add filter…' : `${requests.length} patterns`),
         description: access === 'Block'
-          ? 'Choose Allow or Filtered before editing filters.'
-          : 'Done on any filter screen saves Filtered access immediately. To allow everything, explicitly choose Allow and Save.',
+          ? 'Choose Allow before editing filters.'
+          : 'Done saves immediately. No filters means all requests to this origin are allowed; removing the last filter saves without confirmation.',
         values: [''],
       },
       {
@@ -108,7 +108,7 @@ export async function editRule(ctx: ExtensionCommandContext, selection: string, 
       if (scope !== undefined && scope !== target) {
         target = scope;
         stored = target.store.config.sandbox?.network?.find(rule => rule.destination === destination);
-        access = stored?.access === 'block' ? 'Block' : (stored?.requests === undefined ? 'Allow' : 'Filtered');
+        access = stored?.access === 'block' ? 'Block' : 'Allow';
         requests = structuredClone(stored?.access === 'allow' ? stored.requests ?? [] : []);
       }
 
@@ -116,13 +116,13 @@ export async function editRule(ctx: ExtensionCommandContext, selection: string, 
     }
 
     if (action === 'access') {
-      access = access === 'Allow' ? 'Filtered' : (access === 'Filtered' ? 'Block' : 'Allow');
+      access = access === 'Allow' ? 'Block' : 'Allow';
       continue;
     }
 
     if (action === 'filters') {
       if (access === 'Block') {
-        ctx.ui.notify('Choose Allow or Filtered before editing filters.', 'info');
+        ctx.ui.notify('Choose Allow before editing filters.', 'info');
         continue;
       }
 
@@ -143,9 +143,9 @@ export async function editRule(ctx: ExtensionCommandContext, selection: string, 
       continue;
     }
 
-    const result = networkRuleSchema.safeParse({destination, access: access === 'Block' ? 'block' : 'allow', ...(access === 'Filtered') && {requests}});
+    const result = networkRuleSchema.safeParse({destination, access: access === 'Block' ? 'block' : 'allow', ...access === 'Allow' && requests.length > 0 && {requests}});
     if (!result.success) {
-      ctx.ui.notify('Filtered access requires at least one valid request pattern.', 'warning');
+      ctx.ui.notify('Request filters must contain valid conditions.', 'warning');
       continue;
     }
 

@@ -45,8 +45,8 @@ Playwright and sub-agents are planned as first-party Safety Pin add-ons using th
 ## Implemented network editor and policy
 
 - Network Access shows one row per canonical HTTP/HTTPS origin with combined Allow / Block / Filtered access. Existing rules edit their current scope (Local first when both exist); new destinations choose scope before editing, without creating a rule yet.
-- Done on headers, a request pattern, or the filter list immediately saves the complete valid filtered rule to the selected scope. Backing out preserves completed saves and discards only unfinished edits. Validation/write failures leave the current screen open.
-- Access changes use an explicit Save. Removing the final filter never silently grants unrestricted Allow; users must choose Allow explicitly. Rule removal confirms the selected scope.
+- Done on headers, a request pattern, or the filter list immediately saves the complete valid rule to the selected scope. Backing out preserves completed saves and discards only unfinished edits. Validation/write failures leave the current screen open.
+- The Access option toggles only Allow / Block; filters are additional conditions on Allow. The destination list still summarizes filtered rules as Filtered. Access changes use an explicit Save. Removing the final filter immediately saves unrestricted Allow without confirmation. Rule removal confirms the selected scope.
 - Network destinations without a scheme default to HTTPS, except `localhost` (including ports), which defaults to HTTP. Explicit schemes are preserved; validation still requires an exact origin.
 - `sandbox.network` is an array of destination rules, not a raw SRT network object.
 - Unlisted origins are blocked; a block in either scope wins. All matching filtered entries must pass; alternatives within an entry use OR. Local cannot broaden a Global restriction.
