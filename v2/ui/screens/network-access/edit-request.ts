@@ -1,11 +1,13 @@
+/* eslint-disable unicorn/no-break-in-nested-loop -- Retry loops keep unfinished input in its editor. */
 /* eslint-disable unicorn/consistent-boolean-name -- Save operations return success so rejected edits keep the screen open. */
 import type {ExtensionCommandContext} from '@earendil-works/pi-coding-agent';
 import {requestSchema, type RequestPattern} from '../../../config/index.ts';
 import {editHeaders} from './headers.ts';
+import {inputValues} from './input-values.ts';
 import {showNetworkPage} from './utilities.ts';
 
 /**
- * Validates complete patterns at every Done boundary while leaving unfinished edits local to this screen.
+ * Saves accepted comma-separated fields as complete patterns, retaining rejected values for correction or retry.
  */
 export async function editRequest(
   ctx: ExtensionCommandContext,
@@ -13,11 +15,30 @@ export async function editRequest(
   request: RequestPattern | undefined,
   save: (pattern: RequestPattern | 'remove') => Promise<boolean>,
 ): Promise<void> {
-  const pattern = structuredClone(request ?? {});
+  let pattern = structuredClone(request ?? {});
+
+  /**
+   * Saves headers with the other conditions so an empty or invalid pattern cannot replace a valid one.
+   */
+  async function saveHeaders(headers: Record<string, string[]>): Promise<boolean> {
+    const result = requestSchema.safeParse({...pattern, headers});
+    if (!result.success) {
+      ctx.ui.notify('Keep at least one valid condition. To clear the final condition, remove the pattern instead.', 'warning');
+      return false;
+    }
+
+    if (!await save(result.data)) {
+      return false;
+    }
+
+    pattern = result.data;
+    return true;
+  }
+
   while (true) {
     const field = await showNetworkPage(ctx, {
       title: `Request pattern ${index + 1}`,
-      subtitle: 'Conditions combine with AND · Done saves · Esc: back; unfinished edits discarded, saved changes kept.',
+      subtitle: 'Conditions combine with AND · Accepted fields save automatically · Esc: back.',
     }, [
       {
         id: 'methods', label: 'Methods', currentValue: pattern.methods?.join(', ') ?? 'Not restricted', values: [''],
@@ -32,9 +53,6 @@ export async function editRequest(
       },
       {
         id: 'headers', label: 'Headers…', currentValue: `${Object.keys(pattern.headers ?? {}).length} conditions`, values: [''],
-      },
-      {
-        id: 'done', label: 'Done', currentValue: '', values: [''],
       },
       {
         id: 'remove', label: 'Remove pattern', currentValue: '', values: [''],
@@ -52,39 +70,7 @@ export async function editRequest(
       continue;
     }
 
-    if (field === 'done') {
-      const result = requestSchema.safeParse(pattern);
-      if (!result.success) {
-        ctx.ui.notify('Add at least one valid condition. Paths must start with /; methods and headers must be valid HTTP tokens.', 'warning');
-        continue;
-      }
-
-      if (await save(result.data)) {
-        return;
-      }
-
-      continue;
-    }
-
     if (field === 'headers') {
-      /**
-       * Header Done saves the entire pattern, including any other completed conditions on this screen.
-       */
-      async function saveHeaders(headers: Record<string, string[]>): Promise<boolean> {
-        const result = requestSchema.safeParse({...pattern, headers});
-        if (!result.success) {
-          ctx.ui.notify('Keep at least one valid condition. Check methods and paths in the pattern editor.', 'warning');
-          return false;
-        }
-
-        if (!await save(result.data)) {
-          return false;
-        }
-
-        pattern.headers = headers;
-        return true;
-      }
-
       await editHeaders(ctx, pattern.headers ?? {}, saveHeaders);
       continue;
     }
@@ -93,12 +79,29 @@ export async function editRequest(
       continue;
     }
 
-    const input = await ctx.ui.editor(`${field} · One per line; empty means unrestricted`, pattern[field]?.join('\n') ?? '');
-    if (input === undefined) {
-      continue;
-    }
+    let values = pattern[field] ?? [];
+    const label = field === 'methods' ? 'Methods' : (field === 'paths' ? 'Exact paths' : 'Path prefixes');
+    while (true) {
+      const input = await inputValues(ctx, `${label} · Empty means unrestricted`, values);
+      if (input === undefined) {
+        break;
+      }
 
-    const values = input.split('\n').map(value => value.trim()).filter(Boolean);
-    pattern[field] = values.length === 0 ? undefined : (field === 'methods' ? values.map(value => value.toUpperCase()) : values);
+      values = input;
+      const conditions = values.filter(Boolean);
+      const result = requestSchema.safeParse({
+        ...pattern,
+        [field]: conditions.length === 0 ? undefined : (field === 'methods' ? conditions.map(value => value.toUpperCase()) : conditions),
+      });
+      if (!result.success) {
+        ctx.ui.notify('Keep at least one valid condition. Paths must start with /; methods must be valid HTTP tokens. Remove the pattern to clear its final condition.', 'warning');
+        continue;
+      }
+
+      if (await save(result.data)) {
+        pattern = result.data;
+        break;
+      }
+    }
   }
 }

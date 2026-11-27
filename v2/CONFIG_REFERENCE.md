@@ -53,7 +53,7 @@ An origin string in a settings file, such as `"registry.npmjs.org"`, is shorthan
 | --- | --- |
 | `destination` | Exact HTTP or HTTPS origin: scheme, hostname, optional port. No credentials, wildcard, query, fragment, or non-root path. |
 | `access` | Required: `allow` or `block`. |
-| `requests` | Optional nonempty array of allowed request patterns. Only valid for `allow`; omitted means this entry adds no request restrictions. |
+| `requests` | Optional nonempty array of request patterns. Restricts `allow`; retained but inactive on `block`. Omitted means an allow entry adds no request restrictions. |
 
 Origins are canonicalized before comparison: host casing, a trailing DNS dot, default ports, IDNs, and IP spellings follow URL/SRT normalization. Duplicate canonical destinations in one settings file are rejected. Use multiple patterns in a single entry for alternatives. Cross-scope entries retain their separate restrictions.
 
@@ -61,7 +61,7 @@ Origins are canonicalized before comparison: host casing, a trailing DNS dot, de
 
 | Field | Meaning |
 | --- | --- |
-| `methods` | Nonempty list of HTTP methods, normalized to uppercase. |
+| `methods` | Nonempty list of HTTP methods, normalized to uppercase. The editor accepts comma-separated methods. |
 | `paths` | Nonempty list of exact URL pathnames. |
 | `pathPrefixes` | Nonempty list of prefixes matched at segment boundaries. `/repos/org` matches itself and `/repos/org/example`, not `/repos/organization`. |
 | `headers` | Header-name map to nonempty lists of accepted exact values. Names are case-insensitive; every named header must match. |
@@ -96,9 +96,12 @@ Existing rules: destination list → rule editor in the existing scope → reque
 
 - One row per origin, with combined Allow / Block / Filtered access and source scopes.
 - Existing rules load Local values first if present, otherwise Global. The Scope row selects which source is edited; switching loads that source's saved rule.
-- Done on the header, pattern, or filter-list screen immediately saves the complete valid rule to that scope. No additional parent-screen confirmation is required.
-- Esc goes back, preserving completed saves and discarding unfinished edits on the current screen. Invalid conditions and write errors keep the current screen open without claiming a save.
-- The Access option toggles only Allow / Block, with an explicit Save. Filters restrict Allow; the destination list still labels those rules Filtered. Removing the last filter immediately saves unrestricted Allow without confirmation.
+- Accepted method/path/prefix fields, accepted header values, access changes, and pattern/header removals immediately save the complete valid rule to that scope. No page-level Save is needed.
+- Multi-value fields use prefilled single-line comma-separated inputs. Surround values containing literal commas or leading/trailing spaces with double quotes; quoted values use JSON string escaping (for example, `"/items/a,b", /other`). Existing exact values are quoted automatically when needed.
+- Esc only navigates back and preserves completed saves. Canceling a text editor discards only its unfinished input. Invalid fields and failed writes stay in the field editor with the submitted text available for correction or retry; failed access changes leave the displayed saved access unchanged.
+- New destinations remain uncreated until Allow/Block is explicitly selected or the first valid filter is completed. Choosing scope, opening editors, and Esc never create an unrestricted grant.
+- The Access option toggles only Allow / Block and saves immediately. Block retains optional inactive filters, including after reopening; editing those filters keeps the rule blocked. The destination list still labels filtered allows Filtered.
+- Removing the last pattern immediately removes the entry's filter restrictions without confirmation; a blocked rule remains blocked. Clearing the final condition inside a pattern is invalid: remove the pattern instead.
 - Rule removal confirms the selected scope and leaves the other scope untouched.
 - Files are reloaded before saving so unrelated saved settings are retained. Runtime-generated policy is never written to either source. Saved changes take effect after `/reload` or restarting Pi.
 

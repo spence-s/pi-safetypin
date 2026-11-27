@@ -89,6 +89,7 @@ const networkObjectRuleSchema = z.discriminatedUnion('access', [
   z.strictObject({
     destination: destinationSchema,
     access: z.literal('block'),
+    requests: z.array(requestSchema).min(1).optional(),
   }),
 ]);
 export const networkRuleSchema = z.union([
