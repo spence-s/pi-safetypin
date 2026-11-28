@@ -1,3 +1,4 @@
+import {AsyncLocalStorage} from 'node:async_hooks';
 import {Buffer} from 'node:buffer';
 import {randomUUID} from 'node:crypto';
 import {mkdtemp, realpath, rm} from 'node:fs/promises';
@@ -59,6 +60,7 @@ export class SafetyPin {
 
   private scratchPath: string | undefined;
   private commandCount = 0;
+  private readonly denialCommands = new AsyncLocalStorage<Set<string>>();
   private readonly cwd: string;
   private readonly config: Config;
 
@@ -85,6 +87,37 @@ export class SafetyPin {
       filesystem: structuredClone(SandboxManager.getConfig()!.filesystem),
       network: structuredClone(this.config.sandbox?.network ?? []),
     };
+  }
+
+  /**
+   * Attributes every subprocess in one operation, including pipelines, without mixing parallel calls.
+   */
+  async observeDenials<T>(operation: () => Promise<T>): Promise<{result: T; denials: DenialObservation[]}> {
+    const commandIds = new Set<string>();
+    const denials: DenialObservation[] = [];
+    const unsubscribe = this.onDenial(
+      /**
+       * Unattributed observations must not be blamed on whichever tool happens to be running.
+       */
+      denial => {
+        if (denial.commandId !== undefined && commandIds.has(denial.commandId)) {
+          denials.push(denial);
+        }
+      },
+    );
+    this.commandCount++;
+    try {
+      const result = await this.denialCommands.run(commandIds, operation);
+      if (commandIds.size > 0) {
+        // shortcut: SRT has no observation-completion signal; allow a 250 ms tail even for successful commands.
+        await setTimeout(250);
+      }
+
+      return {result, denials};
+    } finally {
+      unsubscribe();
+      this.commandCount--;
+    }
   }
 
   /**
@@ -243,6 +276,7 @@ export class SafetyPin {
     }
 
     const commandId = randomUUID();
+    this.denialCommands.getStore()?.add(commandId);
     this.commandCount++;
     let isWrapped = false;
     try {

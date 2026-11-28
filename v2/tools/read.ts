@@ -9,7 +9,7 @@ import type {SafetyPin} from '../safety-pin.ts';
 export function createReadOperations(safetyPin: SafetyPin): ReadOperations {
   return {
     /**
-     * Opening without reading preserves OS errors and exercises per-command denial collection.
+     * Opening without reading preserves OS errors; tool-level reporting handles sandbox observations.
      */
     async access(path) {
       const quotedPath = `'${realpathSync(path).replaceAll('\'', '\'"\'"\'')}'`;
@@ -18,9 +18,7 @@ export function createReadOperations(safetyPin: SafetyPin): ReadOperations {
         return;
       }
 
-      const message = result.stderr.trim().length > 0 ? result.stderr.trim() : `Cannot read ${path}`;
-      const diagnostics = result.denials.map(denial => denial.line).join('\n');
-      throw new Error(diagnostics.length > 0 ? `${message}\n\nSandbox observations:\n${diagnostics}` : message);
+      throw new Error(result.stderr.trim().length > 0 ? result.stderr.trim() : `Cannot read ${path}`);
     },
     /**
      * Preserves binary content across the sandbox's shell boundary.

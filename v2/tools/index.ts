@@ -1,4 +1,5 @@
-import type {ExtensionAPI} from '@earendil-works/pi-coding-agent';
+import type {ExtensionAPI, ToolDefinition} from '@earendil-works/pi-coding-agent';
+import type {TSchema} from 'typebox';
 import type {SafetyPin} from '../safety-pin.ts';
 import {createReadOperations, createSandboxReadTool} from './read.ts';
 import {createWriteOperations, createSandboxWriteTool} from './write.ts';
@@ -20,6 +21,73 @@ export class SafetyPinTools {
     this.pi = pi;
     this.cwd = cwd;
     this.safetyPin = safetyPin;
+  }
+
+  /**
+   * Adds policy guidance only to calls with attributed observations, preserving output and failure state.
+   */
+  private registerTool<TParameters extends TSchema, TDetails>(tool: ToolDefinition<TParameters, TDetails>): void {
+    const {safetyPin} = this;
+    this.pi.registerTool({
+      ...tool,
+      defaultActive: false,
+      /**
+       * Collects across the whole tool so caught errors and successful partial operations are covered too.
+       */
+      async execute(...args) {
+        const {result: completed, denials} = await safetyPin.observeDenials(
+          /**
+           * Defers rethrowing until late observations have had a chance to arrive.
+           */
+          async () => {
+            try {
+              return {ok: true as const, result: await tool.execute(...args)};
+            } catch (error) {
+              return {ok: false as const, error};
+            }
+          },
+        );
+        if (denials.length === 0) {
+          if (!completed.ok) {
+            throw completed.error;
+          }
+
+          return completed.result;
+        }
+
+        // Raw observations may contain URLs or secrets; keep the note independent of their text.
+        const note = [
+          'Safety Pin observed blocked operations during this tool call. This does not mean the entire operation failed or that no side effects occurred.',
+          'Do not repeat the blocked operation unchanged under the same policy or bypass it using another tool.',
+          'Use an already-permitted approach, or ask the user for the specific permission needed.',
+          'After a user-authorized permission change and /reload or restart, you may retry through Safety Pin under the updated policy. Reload alone does not grant access.',
+          'Check for partial side effects before retrying; do not automatically replay commands.',
+        ].join('\n');
+        if (!completed.ok) {
+          const message = completed.error instanceof Error ? completed.error.message : String(completed.error);
+          throw new Error(`${message}\n\n${note}`, {cause: completed.error});
+        }
+
+        const {result} = completed;
+        // Programmatic callers receive structured output instead of content for bash and read.
+        let {structuredContent} = result;
+        if (typeof structuredContent === 'string') {
+          structuredContent += `\n\n${note}`;
+        } else if (structuredContent !== null && typeof structuredContent === 'object') {
+          if ('output' in structuredContent && typeof structuredContent.output === 'string') {
+            structuredContent = {...structuredContent, output: `${structuredContent.output}\n\n${note}`};
+          } else if ('note' in structuredContent && typeof structuredContent.note === 'string') {
+            structuredContent = {...structuredContent, note: `${structuredContent.note}\n\n${note}`};
+          }
+        }
+
+        return {
+          ...result,
+          ...(structuredContent !== undefined && {structuredContent}),
+          content: [...result.content, {type: 'text', text: note}],
+        };
+      },
+    });
   }
 
   /**
@@ -120,32 +188,53 @@ export class SafetyPinTools {
     return createSandboxGrepTool(this.cwd, this.safetyPin);
   }
 
+  /**
+   * Keeps read failures on the same reporting path as the other replacements.
+   */
   registerRead() {
-    this.pi.registerTool({...this.read, defaultActive: false});
+    this.registerTool(this.read);
   }
 
+  /**
+   * Keeps write failures on the same reporting path as the other replacements.
+   */
   registerWrite() {
-    this.pi.registerTool({...this.write, defaultActive: false});
+    this.registerTool(this.write);
   }
 
+  /**
+   * Covers both read and write subprocesses of an edit.
+   */
   registerEdit() {
-    this.pi.registerTool({...this.edit, defaultActive: false});
+    this.registerTool(this.edit);
   }
 
+  /**
+   * Preserves streaming while collecting observations around the complete command.
+   */
   registerBash() {
-    this.pi.registerTool({...this.bash, defaultActive: false});
+    this.registerTool(this.bash);
   }
 
+  /**
+   * Covers both sides of find's sandboxed pipeline.
+   */
   registerFind() {
-    this.pi.registerTool({...this.find, defaultActive: false});
+    this.registerTool(this.find);
   }
 
+  /**
+   * Retains listing output even when some directory operations were blocked.
+   */
   registerLs() {
-    this.pi.registerTool({...this.ls, defaultActive: false});
+    this.registerTool(this.ls);
   }
 
+  /**
+   * Covers search pipelines and any additional reads used for context.
+   */
   registerGrep() {
-    this.pi.registerTool({...this.grep, defaultActive: false});
+    this.registerTool(this.grep);
   }
 
   /**
