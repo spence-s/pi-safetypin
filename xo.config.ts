@@ -48,6 +48,12 @@ const xoConfig: XoConfigItem[] = [
     },
   },
   {
+    files: ['v2/extension.*'],
+    rules: {
+      '@typescript-eslint/no-base-to-string': 'off',
+    },
+  },
+  {
     files: ['test/**/*.ts', 'packages/*/test/**/*.ts'],
     rules: {
       '@typescript-eslint/no-unsafe-type-assertion': 'off',

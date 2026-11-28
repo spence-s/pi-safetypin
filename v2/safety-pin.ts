@@ -12,7 +12,7 @@ import {
   type SandboxViolationEvent,
 } from '@anthropic-ai/sandbox-runtime';
 import {execa, type Options} from 'execa';
-import {parseConfig, type Config} from './config/schema.ts';
+import {parseConfig, type Config, type NetworkRule} from './config/schema.ts';
 import {buildNetworkConfig} from './config/network.ts';
 
 /**
@@ -68,6 +68,23 @@ export class SafetyPin {
   constructor(cwd: string, config: Config) {
     this.cwd = cwd;
     this.config = parseConfig(config);
+  }
+
+  /**
+   * Gives callers an active-policy snapshot without exposing mutable runtime configuration.
+   */
+  getEnvironment(): {cwd: string; scratchPath: string; home: string; filesystem: SandboxRuntimeConfig['filesystem']; network: NetworkRule[]} {
+    if (SafetyPin.active !== this || this.scratchPath === undefined) {
+      throw new Error('Safety Pin has not started.');
+    }
+
+    return {
+      cwd: this.cwd,
+      scratchPath: this.scratchPath,
+      home: this.config.sandbox?.isolatedHome ? this.scratchPath : homedir(),
+      filesystem: structuredClone(SandboxManager.getConfig()!.filesystem),
+      network: structuredClone(this.config.sandbox?.network ?? []),
+    };
   }
 
   /**
