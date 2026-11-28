@@ -17,7 +17,7 @@ export function createFindOperations(safetyPin: SafetyPin): FindOperations {
      */
     async exists(path) {
       const quotedPath = `'${path.replaceAll('\'', '\'"\'"\'')}'`;
-      const {process} = await safetyPin.run(`test -e ${quotedPath}`, {reject: false});
+      const {process} = await safetyPin.spawn(`test -e ${quotedPath}`, {reject: false});
       const result = await process;
       return result.exitCode === 0;
     },
@@ -38,10 +38,10 @@ export function createFindOperations(safetyPin: SafetyPin): FindOperations {
       ];
       const effectiveLimit = Math.max(0, Math.floor(limit));
       const command = arguments_.map(argument => `'${argument.replaceAll('\'', '\'"\'"\'')}'`).join(' ');
-      const {process: destination} = await safetyPin.run(`head -n ${effectiveLimit}`, {cwd: path});
+      const {process: destination} = await safetyPin.spawn(`head -n ${effectiveLimit}`, {cwd: path});
       let result;
       try {
-        const {process: source} = await safetyPin.run(command, {
+        const {process: source} = await safetyPin.spawn(command, {
           cwd: path,
           reject: false,
           buffer: {stdout: false},

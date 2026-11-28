@@ -15,7 +15,7 @@ export function createEditOperations(safetyPin: SafetyPin): EditOperations {
      */
     async access(path) {
       const quotedPath = `'${path.replaceAll('\'', '\'"\'"\'')}'`;
-      const {process} = await safetyPin.run(`test -r ${quotedPath} && test -w ${quotedPath}`, {reject: false});
+      const {process} = await safetyPin.spawn(`test -r ${quotedPath} && test -w ${quotedPath}`, {reject: false});
       const result = await process;
       if (result.exitCode !== 0) {
         throw new Error(result.stderr.trim().length > 0 ? result.stderr.trim() : `Cannot edit ${path}`);

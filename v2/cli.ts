@@ -34,14 +34,14 @@ async function main(): Promise<void> {
       return;
     }
 
-    // run() uses a shell; quote every argument so MCP arguments remain literal.
+    // spawn() uses a shell; quote every argument so MCP arguments remain literal.
     const command = args.map(
       /**
        * Prevents server arguments from becoming host-provided shell syntax.
        */
       argument => `'${argument.replaceAll('\'', '\'"\'"\'')}'`,
     ).join(' ');
-    const {process: subprocess} = await safetyPin.run(`exec ${command}`, {
+    const {process: subprocess} = await safetyPin.spawn(`exec ${command}`, {
       stdin: 'inherit',
       stdout: 'inherit',
       stderr: 'inherit',

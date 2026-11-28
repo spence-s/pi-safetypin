@@ -9,22 +9,25 @@ import type {SafetyPin} from '../safety-pin.ts';
 export function createReadOperations(safetyPin: SafetyPin): ReadOperations {
   return {
     /**
-     * Checks access inside the sandbox rather than relying on host permissions.
+     * Opening without reading preserves OS errors and exercises per-command denial collection.
      */
     async access(path) {
       const quotedPath = `'${realpathSync(path).replaceAll('\'', '\'"\'"\'')}'`;
-      const {process} = await safetyPin.run(`test -r ${quotedPath}`, {reject: false});
-      const result = await process;
-      if (result.exitCode !== 0) {
-        throw new Error(result.stderr.trim().length > 0 ? result.stderr.trim() : `Cannot read ${path}`);
+      const result = await safetyPin.run(`: < ${quotedPath}`, {reject: false});
+      if (result.exitCode === 0) {
+        return;
       }
+
+      const message = result.stderr.trim().length > 0 ? result.stderr.trim() : `Cannot read ${path}`;
+      const diagnostics = result.denials.map(denial => denial.line).join('\n');
+      throw new Error(diagnostics.length > 0 ? `${message}\n\nSandbox observations:\n${diagnostics}` : message);
     },
     /**
      * Preserves binary content across the sandbox's shell boundary.
      */
     async readFile(path) {
       const quotedPath = `'${realpathSync(path).replaceAll('\'', '\'"\'"\'')}'`;
-      const {process} = await safetyPin.run(`base64 < ${quotedPath}`, {reject: false});
+      const {process} = await safetyPin.spawn(`base64 < ${quotedPath}`, {reject: false});
       const result = await process;
       if (result.exitCode !== 0) {
         throw new Error(result.stderr.trim().length > 0 ? result.stderr.trim() : `Cannot read ${path}`);
@@ -37,7 +40,7 @@ export function createReadOperations(safetyPin: SafetyPin): ReadOperations {
      */
     async detectImageMimeType(path) {
       const quotedPath = `'${realpathSync(path).replaceAll('\'', '\'"\'"\'')}'`;
-      const {process} = await safetyPin.run(`file --mime-type -b -- ${quotedPath}`, {reject: false});
+      const {process} = await safetyPin.spawn(`file --mime-type -b -- ${quotedPath}`, {reject: false});
       const result = await process;
       if (result.exitCode !== 0) {
         throw new Error(result.stderr.trim().length > 0 ? result.stderr.trim() : `Cannot identify ${path}`);

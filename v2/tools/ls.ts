@@ -30,7 +30,7 @@ export function createSandboxLsTool(cwd: string, safetyPin: SafetyPin): ReturnTy
     let result;
     try {
       const quotedDirectory = `'${`${directory}/`.replaceAll('\'', '\'"\'"\'')}'`;
-      const {process} = await safetyPin.run(`ls -1Ap -- ${quotedDirectory}`, {
+      const {process} = await safetyPin.spawn(`ls -1Ap -- ${quotedDirectory}`, {
         cwd,
         ...(signal !== undefined && {cancelSignal: signal}),
         reject: false,

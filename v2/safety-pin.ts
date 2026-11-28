@@ -1,8 +1,16 @@
+import {Buffer} from 'node:buffer';
+import {randomUUID} from 'node:crypto';
 import {mkdtemp, realpath, rm} from 'node:fs/promises';
 import {homedir, tmpdir} from 'node:os';
 import {join} from 'node:path';
 import process from 'node:process';
-import {SandboxManager, SandboxRuntimeConfigSchema, type SandboxRuntimeConfig} from '@anthropic-ai/sandbox-runtime';
+import {setTimeout} from 'node:timers/promises';
+import {
+  SandboxManager,
+  SandboxRuntimeConfigSchema,
+  type SandboxRuntimeConfig,
+  type SandboxViolationEvent,
+} from '@anthropic-ai/sandbox-runtime';
 import {execa, type Options} from 'execa';
 import {parseConfig, type Config} from './config/schema.ts';
 import {buildNetworkConfig} from './config/network.ts';
@@ -27,6 +35,16 @@ export type RunOptions<T extends Options = Options> = T extends Options ? Pick<T
   | 'killSignal'
   | 'forceKillAfterDelay'
 > : never;
+
+/**
+ * Keeps diagnostic observations separate from resource parsing and approval decisions.
+ * Attribution comes from SRT's carriers, not a security boundary between commands.
+ */
+export type DenialObservation = {
+  commandId: string | undefined;
+  line: string;
+  timestamp: Date;
+};
 
 export class SafetyPin {
   private static activeInstance: SafetyPin | undefined;
@@ -53,7 +71,43 @@ export class SafetyPin {
   }
 
   /**
-   * Installs generated request enforcement before reserving the shared runtime for commands.
+   * Streams new diagnostics without replaying the shared store's retained history.
+   * Callers own unsubscription; listener failures must not interfere with enforcement.
+   */
+  onDenial(listener: (denial: DenialObservation) => void): () => void {
+    const store = SandboxManager.getSandboxViolationStore();
+    const seen = new WeakSet<SandboxViolationEvent>(store.getViolations());
+    return store.subscribe(
+      /**
+       * SRT publishes its whole tail each time, so forward each observation only once.
+       */
+      violations => {
+        for (const violation of violations) {
+          if (seen.has(violation)) {
+            continue;
+          }
+
+          seen.add(violation);
+          if (SafetyPin.active !== this) {
+            continue;
+          }
+
+          try {
+            listener({
+              commandId: violation.encodedCommand === undefined ? undefined : Buffer.from(violation.encodedCommand, 'base64').toString('utf8'),
+              line: violation.line,
+              timestamp: new Date(violation.timestamp),
+            });
+          } catch (error) {
+            process.emitWarning(error instanceof Error ? error : String(error));
+          }
+        }
+      },
+    );
+  }
+
+  /**
+   * Installs request enforcement and filesystem observation before accepting commands.
    */
   async start(): Promise<void> {
     if (SafetyPin.activeInstance !== undefined) {
@@ -85,7 +139,7 @@ export class SafetyPin {
       const previousTmpdir = process.env.TMPDIR;
       process.env.TMPDIR = scratchPath;
       try {
-        await SandboxManager.initialize(config);
+        await SandboxManager.initialize(config, undefined, true);
       } finally {
         if (previousTmpdir === undefined) {
           delete process.env.TMPDIR;
@@ -117,18 +171,61 @@ export class SafetyPin {
   }
 
   /**
-   * Exposes Execa without awaiting its thenable subprocess or recreating its APIs.
+   * Gives silent exit-code-1 failures and likely filesystem errors time to acquire diagnostics.
+   * Failed commands retain Execa's rejection behavior; error text alone never becomes a denial.
+   */
+  async run<const OptionsType extends RunOptions = Record<string, never>>(
+    command: string,
+    options?: OptionsType,
+  ): Promise<Awaited<ReturnType<typeof execa<OptionsType>>> & {commandId: string; denials: DenialObservation[]}>;
+  async run(command: string, options: RunOptions = {}): Promise<unknown> {
+    const observations: DenialObservation[] = [];
+    const unsubscribe = this.onDenial(
+      /**
+       * Subscribe before spawning so fast proxy denials cannot outrun collection.
+       */
+      denial => {
+        observations.push(denial);
+      },
+    );
+    this.commandCount++;
+    try {
+      const {process: subprocess, commandId} = await this.spawn(command, {...options, reject: false});
+      const result = await subprocess;
+      if (result.exitCode === 1 || (result.failed && typeof result.stderr === 'string' && /operation not permitted/iv.test(result.stderr))) {
+        // shortcut: exit code 1 or English permission errors trigger a 250 ms window; replace when SRT exposes command completion.
+        await setTimeout(250);
+      }
+
+      const completed = Object.assign(result, {
+        commandId,
+        denials: observations.filter(denial => denial.commandId === commandId),
+      });
+      if (completed instanceof Error && options.reject !== false) {
+        throw completed;
+      }
+
+      return completed;
+    } finally {
+      unsubscribe();
+      this.commandCount--;
+    }
+  }
+
+  /**
+   * Exposes Execa and a unique observation key without awaiting its thenable subprocess.
    * Host HOME preserves tool config discovery; filesystem rules still control access.
    * Options are trusted host code: file-backed stdio and transforms run outside SRT.
-   * Pipe only into another safetyPin.run() subprocess to keep both commands isolated.
+   * Pipe only into another safetyPin.spawn() subprocess to keep both commands isolated.
    */
-  async run<const OptionsType extends RunOptions = Record<string, never>>(command: string, options?: OptionsType): Promise<{process: ReturnType<typeof execa<OptionsType>>}>;
-  async run(command: string, options: RunOptions = {}): Promise<unknown> {
+  async spawn<const OptionsType extends RunOptions = Record<string, never>>(command: string, options?: OptionsType): Promise<{process: ReturnType<typeof execa<OptionsType>>; commandId: string}>;
+  async spawn(command: string, options: RunOptions = {}): Promise<unknown> {
     const {scratchPath} = this;
     if (scratchPath === undefined) {
       throw new Error('Safety Pin has not started.');
     }
 
+    const commandId = randomUUID();
     this.commandCount++;
     let isWrapped = false;
     try {
@@ -138,6 +235,7 @@ export class SafetyPin {
         undefined,
         undefined,
         options?.cancelSignal,
+        {commandId, commandText: command},
       );
       isWrapped = true;
       const subprocess = execa(executable, {
@@ -169,7 +267,7 @@ export class SafetyPin {
 
       void subprocess.then(cleanup, cleanup);
 
-      return {process: subprocess};
+      return {process: subprocess, commandId};
     } catch (error) {
       this.commandCount--;
       if (isWrapped) {

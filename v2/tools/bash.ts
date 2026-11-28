@@ -13,7 +13,7 @@ export function createBashOperations(safetyPin: SafetyPin): BashOperations {
     async exec(command, commandCwd, {onData, signal, timeout}) {
       try {
         const quotedCommand = `'${command.replaceAll('\'', '\'"\'"\'')}'`;
-        const {process} = await safetyPin.run(`sh -c ${quotedCommand}`, {
+        const {process} = await safetyPin.spawn(`sh -c ${quotedCommand}`, {
           cwd: commandCwd,
           ...(signal !== undefined && {cancelSignal: signal}),
           ...(timeout !== undefined && {timeout: timeout * 1000}),

@@ -11,7 +11,7 @@ export function createWriteOperations(safetyPin: SafetyPin): WriteOperations {
      */
     async mkdir(path) {
       const quotedPath = `'${path.replaceAll('\'', '\'"\'"\'')}'`;
-      const {process} = await safetyPin.run(`mkdir -p -- ${quotedPath}`, {reject: false});
+      const {process} = await safetyPin.spawn(`mkdir -p -- ${quotedPath}`, {reject: false});
       const result = await process;
       if (result.exitCode !== 0) {
         throw new Error(result.stderr.trim().length > 0 ? result.stderr.trim() : `Cannot create ${path}`);
@@ -22,7 +22,7 @@ export function createWriteOperations(safetyPin: SafetyPin): WriteOperations {
      */
     async writeFile(path, content) {
       const quotedPath = `'${path.replaceAll('\'', '\'"\'"\'')}'`;
-      const {process} = await safetyPin.run(`cat > ${quotedPath}`, {input: content, reject: false});
+      const {process} = await safetyPin.spawn(`cat > ${quotedPath}`, {input: content, reject: false});
       const result = await process;
       if (result.exitCode !== 0) {
         throw new Error(result.stderr.trim().length > 0 ? result.stderr.trim() : `Cannot write ${path}`);

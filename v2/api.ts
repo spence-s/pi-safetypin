@@ -3,6 +3,8 @@ import process from 'node:process';
 import {loadConfig, mergeConfigs, type Config} from './config/index.ts';
 import {SafetyPin} from './safety-pin.ts';
 
+export type {DenialObservation} from './safety-pin.ts';
+
 /**
  * Shares runtime ownership while keeping file and caller-supplied network restrictions additive.
  */

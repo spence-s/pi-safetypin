@@ -43,12 +43,12 @@ export function createSandboxMcpTransport(
 
       const command = args.map(
         /**
-         * Preserves argument boundaries across Safety Pin's shell-based run API.
+         * Preserves argument boundaries across Safety Pin's shell-based spawn API.
          */
         argument => `'${argument.replaceAll('\'', '\'"\'"\'')}'`,
       ).join(' ');
       const controller = new AbortController();
-      const {process: subprocess} = await safetyPin.run(`exec ${command}`, {
+      const {process: subprocess} = await safetyPin.spawn(`exec ${command}`, {
         ...(options.cwd !== undefined && {cwd: options.cwd}),
         stdin: 'pipe',
         stdout: 'pipe',

@@ -68,13 +68,13 @@ export function createSandboxGrepTool(cwd: string, safetyPin: SafetyPin): Return
     let result;
     let destination;
     try {
-      const {process: head} = await safetyPin.run(`head -n ${effectiveLimit}`, {
+      const {process: head} = await safetyPin.spawn(`head -n ${effectiveLimit}`, {
         cwd,
         ...(signal !== undefined && {cancelSignal: signal}),
       });
       destination = head;
       const command = arguments_.map(argument => `'${argument.replaceAll('\'', '\'"\'"\'')}'`).join(' ');
-      const {process: source} = await safetyPin.run(command, {
+      const {process: source} = await safetyPin.spawn(command, {
         cwd,
         ...(signal !== undefined && {cancelSignal: signal}),
         reject: false,
