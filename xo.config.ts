@@ -1,7 +1,7 @@
 import type {XoConfigItem} from 'xo';
 
 const xoConfig: XoConfigItem[] = [
-  {ignores: ['test/temp', 'coverage']},
+  {ignores: ['coverage']},
   {
     space: true,
     rules: {
@@ -39,7 +39,7 @@ const xoConfig: XoConfigItem[] = [
     },
   },
   {
-    files: ['v2/ui/screens/**/*.ts'],
+    files: ['src/ui/screens/**/*.ts'],
     rules: {
       // Each interaction must finish before the screen is shown again.
       'no-await-in-loop': 'off',
@@ -48,7 +48,7 @@ const xoConfig: XoConfigItem[] = [
     },
   },
   {
-    files: ['v2/extension.*'],
+    files: ['src/extension.*'],
     rules: {
       '@typescript-eslint/no-base-to-string': 'off',
     },

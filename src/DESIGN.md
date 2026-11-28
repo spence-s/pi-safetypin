@@ -11,7 +11,7 @@ Discuss and plan freely, but don't change files without an explicit request. Rec
 When making changes, focus on extremely small and focused edits. Stop and check in with the user frequently to ensure we are following an agreed upon path. Always attempt to work on the smallest unit of work at a time as possible.
 For example, work in a single funcion, then check in, work in a single file, then check in, then tie the work together across multiple files. Work should start small and tie in together as the work expands in an agreed upon way.
 
-Leave `package.json` and package wiring out of scope for now.
+Source now lives in `src/`; the package root exports the API and Pi loads `src/extension.ts`. V1 and its tests have been removed.
 
 ## V2 is Safety Pin's starting point
 

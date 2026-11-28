@@ -227,7 +227,5 @@ The public configuration must describe guarantees we can actually enforce. A sma
 - `safety-pin.ts`: current V2 runtime configuration boundary.
 - `ui/screens/network-access/`: scoped network editor.
 - `config/network.ts`: declarative rules to SRT request enforcement.
-- `../src/config.ts`: V1 request-policy schema and scoped editing.
-- `../src/session-manager.ts`: V1 policy-to-SRT translation.
 - [SRT filesystem and network documentation](https://github.com/anthropic-experimental/sandbox-runtime#network-configuration).
 - [SRT request-filter API](https://github.com/anthropic-experimental/sandbox-runtime/blob/main/src/sandbox/request-filter.ts).

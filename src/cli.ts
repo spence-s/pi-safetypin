@@ -12,7 +12,7 @@ async function main(): Promise<void> {
   }
 
   if (args.length === 0) {
-    throw new Error('Usage: node v2/cli.ts -- <command> [args...]');
+    throw new Error('Usage: node src/cli.ts -- <command> [args...]');
   }
 
   const safetyPin = await getSafetyPin();

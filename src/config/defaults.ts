@@ -5,7 +5,7 @@ import process from 'node:process';
 import type {Config} from './schema.ts';
 
 /**
- * Keeps V1's workspace and skill access without exposing the rest of the home directory.
+ * Grants workspace and skill access without exposing the rest of the home directory.
  */
 export async function getDefaultConfig(cwd: string): Promise<Config> {
   cwd = resolve(cwd);

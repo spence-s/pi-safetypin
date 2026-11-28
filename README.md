@@ -28,18 +28,13 @@ Choose one. Add `--local` to install for the current project only, then restart 
 
 The package loads the V2 proof of concept. Run `/safetypin` to manage filesystem and network access. Network rules allow, block, or filter exact HTTP/HTTPS origins; Global and Local restrictions combine. Changes apply after `/reload` or restarting Pi.
 
-HTTPS access requires TLS inspection; pinned/mTLS clients and raw TCP/SSH are not supported. V2 is Safety Pin's clean starting point, not a user migration—see [V2 configuration](v2/CONFIG_REFERENCE.md).
-
-### V1
-
-To use the legacy sandbox, load `./src/index.ts` directly instead of the package. Run `/sandbox` to manage filesystem access, allowed network destinations, and advanced settings for the current project or globally. Blocked network requests can prompt you to approve access.
-
-- `/sandbox status` — check protection.
-- `/sandbox off` or `/sandbox on` — disable or enable it for this session. **When off, managed tools run directly on the host.**
-- `research_scout` — optional read-only research delegation, configurable through `/sandbox`.
-- `/playwright on` — optional Playwright CLI bridge using host Chrome through the sandbox's network proxy; requires Chrome and `playwright-cli` installed separately.
+HTTPS access requires TLS inspection; pinned/mTLS clients and raw TCP/SSH are not supported. V2 is Safety Pin's clean starting point, not a user migration—see [V2 configuration](src/CONFIG_REFERENCE.md).
 
 **Scope:** this extension isolates its managed tools, not Pi itself or tools from other extensions. Only load extensions you trust.
+
+## API
+
+Import `getSafetyPin` from `pi-safetypin`. The package root exposes the API; Pi loads `src/extension.ts`. The standalone launcher is `node src/cli.ts -- <command> [args...]`.
 
 ## Development
 
@@ -48,6 +43,8 @@ npm install
 npm run check && npm run lint && npm test
 pi -e .
 ```
+
+The V1 test suite has been removed. `npm test` currently runs zero tests; see the proposed [V2 test plan](docs/TEST_PLAN.md).
 
 If Sloppi's sandbox is already installed, run `pi config --local` from this checkout and disable only its sandbox extension before launching V2. Both extensions replace the same tools. Keep the override local so other projects stay protected.
 

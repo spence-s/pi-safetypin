@@ -148,14 +148,13 @@ Use the API for commands that should respect the user’s filesystem and network
 This is the current V2 API shape. It assumes the Safety Pin extension has already started its sandbox.
 
 ```ts
-import {getSafetyPin} from 'pi-safetypin/v2';
+import {getSafetyPin} from 'pi-safetypin';
 
 const safetyPin = await getSafetyPin();
-const {process: command} = await safetyPin.run('git status --short');
-const {stdout} = await command;
+const {stdout} = await safetyPin.run('git status --short');
 ```
 
-`getSafetyPin()` reuses the active instance. `run()` returns a subprocess you can await for output and errors.
+`getSafetyPin()` reuses the active instance. `run()` returns the completed result; use `spawn()` for a streaming subprocess.
 
 If there is no active instance, `getSafetyPin()` returns an unstarted instance. It does not start one for you. Standalone ownership and lifecycle belong in the API guide, not in this shared-instance example.
 

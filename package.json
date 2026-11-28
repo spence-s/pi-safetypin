@@ -10,14 +10,9 @@
   "type": "module",
   "exports": {
     ".": {
-      "types": "./dist/src/index.d.ts",
-      "import": "./dist/src/index.js",
-      "default": "./dist/src/index.js"
-    },
-    "./v2": {
-      "types": "./dist/v2/api.d.ts",
-      "import": "./dist/v2/api.js",
-      "default": "./dist/v2/api.js"
+      "types": "./dist/src/api.d.ts",
+      "import": "./dist/src/api.js",
+      "default": "./dist/src/api.js"
     }
   },
   "sideEffects": false,
@@ -27,21 +22,20 @@
   "scripts": {
     "build": "rimraf dist && tsc -p tsconfig.build.json",
     "check": "tsc -p tsconfig.json --noEmit",
-    "dev": "node --watch src/index.ts",
+    "dev": "node --watch src/cli.ts",
     "lint": "xo",
     "prepare": "node --input-type=module -e \"if (process.env.NODE_ENV !== 'production') (await import('husky')).default()\"",
     "release": "np",
-    "start": "node dist/src/index.js",
-    "test": "node --test test/**/*.test.ts",
-    "test:coverage": "node --test --experimental-test-coverage test/**/*.test.ts",
-    "test:watch": "node --test --watch test/**/*.test.ts",
+    "start": "node dist/src/cli.js",
+    "test": "node --test",
+    "test:coverage": "node --test --experimental-test-coverage",
+    "test:watch": "node --test --watch",
     "update": "ncu -i",
     "prepack": "npm run build"
   },
   "files": [
     "dist",
-    "src",
-    "v2"
+    "src"
   ],
   "keywords": [
     "pi-package",
@@ -54,7 +48,6 @@
     "@anthropic-ai/sandbox-runtime": "^0.0.83",
     "execa": "^10.2.1",
     "object-deep-merge": "^2.0.1",
-    "playwright": "^1.65.1",
     "zod": "^4.6.7"
   },
   "devDependencies": {
@@ -79,7 +72,7 @@
   },
   "pi": {
     "extensions": [
-      "./v2/extension.ts"
+      "./src/extension.ts"
     ]
   }
 }
